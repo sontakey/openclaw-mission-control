@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { IncomingMessage, ServerResponse } from "node:http";
 import { access } from "node:fs/promises";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 import test from "node:test";
 
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
@@ -40,6 +43,40 @@ const requiredPaths = [
   "tsconfig.server.json",
 ];
 
+async function requestApp(targetApp: ReturnType<typeof createApp>, path: string) {
+  const socket = new PassThrough();
+  const request = new IncomingMessage(socket);
+
+  request.method = "GET";
+  request.url = path;
+  request.headers = { host: "127.0.0.1" };
+
+  const response = new ServerResponse(request);
+  const chunks: Buffer[] = [];
+
+  socket.on("data", (chunk) => {
+    chunks.push(Buffer.from(chunk));
+  });
+
+  const finished = new Promise<void>((resolve, reject) => {
+    response.on("finish", resolve);
+    response.on("error", reject);
+  });
+
+  response.assignSocket(socket);
+  targetApp(request, response);
+  await finished;
+
+  const rawResponse = Buffer.concat(chunks).toString("utf8");
+  const [, body = ""] = rawResponse.split("\r\n\r\n");
+
+  return {
+    body,
+    headers: response.getHeaders(),
+    status: response.statusCode,
+  };
+}
+
 test("section 3 scaffold paths exist", async () => {
   await Promise.all(requiredPaths.map((path) => access(path)));
 });
@@ -56,28 +93,26 @@ test("app renders the agents route", () => {
 });
 
 test("health endpoint responds with ok", async () => {
-  const server = app.listen(0);
+  const startedAt = Date.now();
+  const response = await requestApp(app, "/health");
+  const finishedAt = Date.now();
 
-  try {
-    const address = server.address();
-    assert.ok(address);
-    assert.notStrictEqual(typeof address, "string");
+  const body = JSON.parse(response.body) as {
+    status: string;
+    timestamp: string;
+    uptime: number;
+  };
 
-    const response = await fetch(`http://127.0.0.1:${address.port}/health`);
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true });
-  } finally {
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+  assert.equal(response.status, 200);
+  assert.equal(body.status, "ok");
+  assert.equal(typeof body.uptime, "number");
+  assert.ok(Number.isFinite(body.uptime));
+  assert.ok(body.uptime >= 0);
 
-        resolve();
-      });
-    });
-  }
+  const timestamp = Date.parse(body.timestamp);
+  assert.ok(Number.isFinite(timestamp));
+  assert.ok(timestamp >= startedAt);
+  assert.ok(timestamp <= finishedAt);
 });
 
 test("createDatabase initializes the section 4 schema", () => {
@@ -144,36 +179,20 @@ test("createApp serves static assets and falls back to dist/client index", async
   await writeFile(join(clientDistPath, "app.js"), "console.log('asset');");
 
   const staticApp = createApp({ clientDistPath, initializeDatabase: false });
-  const server = staticApp.listen(0);
 
   try {
-    const address = server.address();
-    assert.ok(address);
-    assert.notStrictEqual(typeof address, "string");
-
-    const assetResponse = await fetch(`http://127.0.0.1:${address.port}/app.js`);
+    const assetResponse = await requestApp(staticApp, "/app.js");
     assert.equal(assetResponse.status, 200);
-    assert.match(await assetResponse.text(), /asset/);
+    assert.match(assetResponse.body, /asset/);
 
-    const routeResponse = await fetch(`http://127.0.0.1:${address.port}/settings`);
+    const routeResponse = await requestApp(staticApp, "/settings");
     assert.equal(routeResponse.status, 200);
-    assert.match(await routeResponse.text(), /client shell/);
+    assert.match(routeResponse.body, /client shell/);
 
-    const apiResponse = await fetch(`http://127.0.0.1:${address.port}/api/health`);
+    const apiResponse = await requestApp(staticApp, "/api/health");
     assert.equal(apiResponse.status, 200);
-    assert.deepEqual(await apiResponse.json(), { ok: true });
+    assert.equal(JSON.parse(apiResponse.body).status, "ok");
   } finally {
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve();
-      });
-    });
-
     await rm(clientDistPath, { force: true, recursive: true });
   }
 });

@@ -1,0 +1,8 @@
+{
+  "name": "concurrently",
+  "version": "0.0.0-local",
+  "type": "module",
+  "bin": {
+    "concurrently": "./bin/concurrently.js"
+  }
+}

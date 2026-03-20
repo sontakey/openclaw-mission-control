@@ -3,5 +3,9 @@ import { Router } from "express";
 export const healthRouter = Router();
 
 healthRouter.get("/", (_request, response) => {
-  response.json({ ok: true });
+  response.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
