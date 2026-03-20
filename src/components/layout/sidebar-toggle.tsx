@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-const Menu = Menu;
-const PanelLeftClose = PanelLeftClose;
-const PanelLeftOpen = PanelLeftOpen;
 
 export function SidebarToggle({
   className,

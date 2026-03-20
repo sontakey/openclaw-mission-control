@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useChatPanel } from "@/providers/chat-panel-provider";
 
-const MessageSquare = MessageSquare;
 
 export const ChatPanelToggle = () => {
   const { isOpen, toggle } = useChatPanel();
