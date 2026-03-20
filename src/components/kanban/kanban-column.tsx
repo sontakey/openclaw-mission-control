@@ -12,7 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-import { KanbanCard } from "./kanban-card";
+import { PlanCard } from "./plan-card";
 import { columnVariants, type KanbanColumnDef, type KanbanTask } from "./types";
 
 const columnIconComponents: Record<
@@ -94,7 +94,7 @@ export const KanbanColumn = ({ column, onTaskClick }: KanbanColumnProps) => {
         ) : (
           <div className="space-y-2">
             {column.tasks.map((task) => (
-              <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
+              <PlanCard key={task.id} task={task} onTaskClick={onTaskClick} />
             ))}
           </div>
         )}

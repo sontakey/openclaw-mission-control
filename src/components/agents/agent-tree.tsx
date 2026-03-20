@@ -137,6 +137,24 @@ export function organizeAgents(agents: Agent[]): OrganizedAgents {
   return { roots, standalone };
 }
 
+function getDirectReportCounts(agents: Agent[]) {
+  const agentIds = new Set(agents.map((agent) => agent.id));
+  const directReportCounts = new Map<string, number>();
+
+  for (const agent of agents) {
+    if (!agent.parentId || agent.parentId === agent.id || !agentIds.has(agent.parentId)) {
+      continue;
+    }
+
+    directReportCounts.set(
+      agent.parentId,
+      (directReportCounts.get(agent.parentId) ?? 0) + 1,
+    );
+  }
+
+  return directReportCounts;
+}
+
 export const AgentTree = ({ agents, className }: AgentTreeProps) => {
   const { roots, standalone } = organizeAgents(agents);
 
@@ -183,6 +201,22 @@ export const AgentTree = ({ agents, className }: AgentTreeProps) => {
   );
 };
 
+export const AgentGrid = ({ agents, className }: AgentTreeProps) => {
+  const directReportCounts = getDirectReportCounts(agents);
+
+  return (
+    <div className={cn("flex flex-wrap gap-4", className)}>
+      {agents.map((agent) => (
+        <AgentCard
+          key={agent.id}
+          agent={agent}
+          childCount={directReportCounts.get(agent.id) ?? 0}
+        />
+      ))}
+    </div>
+  );
+};
+
 const AgentBranch = ({ node }: { node: AgentTreeNode }) => {
   const hasChildren = node.children.length > 0;
 
@@ -221,7 +255,7 @@ const AgentBranch = ({ node }: { node: AgentTreeNode }) => {
   );
 };
 
-const AgentCard = ({
+export const AgentCard = ({
   agent,
   childCount = 0,
 }: {

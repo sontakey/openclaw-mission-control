@@ -1,16 +1,40 @@
 import React from "react";
 
-import { AgentTree } from "@/components/agents/agent-tree";
+import { AgentGrid, AgentTree } from "@/components/agents/agent-tree";
 import { PageHeader } from "@/components/layout/page-header/page-header";
 import { PageHeaderActions } from "@/components/layout/page-header/page-header-actions";
 import { PageHeaderRow } from "@/components/layout/page-header/page-header-row";
 import { PageHeaderTitle } from "@/components/layout/page-header/page-header-title";
 import { ChatPanelToggle } from "@/components/layout/chat-panel-toggle";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents, type AgentsStatus } from "@/hooks/useAgents";
+import type { Agent } from "@/lib/types";
+
+export type AgentViewMode = "grid" | "tree";
+
+export const DEFAULT_AGENT_VIEW_MODE: AgentViewMode = "tree";
 
 const AgentsPage = () => {
   const { agents, isLoading, status } = useAgents();
+
+  return (
+    <AgentsPageContent agents={agents} isLoading={isLoading} status={status} />
+  );
+};
+
+export const AgentsPageContent = ({
+  agents,
+  initialViewMode = DEFAULT_AGENT_VIEW_MODE,
+  isLoading,
+  status,
+}: {
+  agents: Agent[];
+  initialViewMode?: AgentViewMode;
+  isLoading: boolean;
+  status: AgentsStatus;
+}) => {
+  const [viewMode, setViewMode] = React.useState<AgentViewMode>(initialViewMode);
 
   return (
     <>
@@ -26,9 +50,36 @@ const AgentsPage = () => {
       <div className="space-y-8">
         {/* Agents section */}
         <section>
-          <p className="text-muted-foreground mb-4 text-sm">
-            Your AI agents and their current status.
-          </p>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-muted-foreground text-sm">
+              Your AI agents and their current status.
+            </p>
+
+            <div
+              aria-label="Agent view"
+              className="inline-flex items-center gap-1 rounded-lg border p-1"
+              role="group"
+            >
+              <Button
+                aria-pressed={viewMode === "tree"}
+                onClick={() => setViewMode("tree")}
+                size="sm"
+                type="button"
+                variant={viewMode === "tree" ? "secondary" : "ghost"}
+              >
+                Tree
+              </Button>
+              <Button
+                aria-pressed={viewMode === "grid"}
+                onClick={() => setViewMode("grid")}
+                size="sm"
+                type="button"
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+              >
+                Grid
+              </Button>
+            </div>
+          </div>
 
           {status === "idle" || isLoading ? (
             <div className="flex flex-wrap gap-4">
@@ -39,7 +90,13 @@ const AgentsPage = () => {
           ) : agents.length === 0 ? (
             <p className="text-muted-foreground">No agents registered yet.</p>
           ) : (
-            <AgentTree agents={agents} />
+            <div data-view-mode={viewMode}>
+              {viewMode === "tree" ? (
+                <AgentTree agents={agents} />
+              ) : (
+                <AgentGrid agents={agents} />
+              )}
+            </div>
           )}
         </section>
       </div>

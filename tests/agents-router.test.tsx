@@ -225,6 +225,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       agents: {
         list: [
           {
+            emoji: "🔧",
             id: "marv",
             name: "Marv",
             role: "Engineer",
@@ -234,6 +235,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
           },
           {
             default: true,
+            emoji: "🎯",
             id: "anton",
             name: "Anton",
             role: "Orchestrator",
@@ -242,6 +244,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
             },
           },
           {
+            emoji: "📢",
             id: "harry",
             name: "Harry",
             role: "Marketing",
@@ -250,16 +253,19 @@ test("agents router adds hierarchy fields from configured subagents", async () =
             },
           },
           {
+            emoji: "🧪",
             id: "kevin",
             name: "Kevin",
             role: "QA",
           },
           {
+            emoji: "📝",
             id: "penny",
             name: "Penny",
             role: "Research",
           },
           {
+            emoji: "🗣️",
             id: "voice",
             name: "Voice",
             role: "Assistant",
@@ -369,6 +375,7 @@ test("agents router caches gateway data for 30 seconds", async () => {
         agents: {
           list: [
             {
+              emoji: "🤖",
               id: "alpha",
               name: `Alpha ${configCalls}`,
               role: "Lead",
@@ -418,7 +425,7 @@ test("agents router caches gateway data for 30 seconds", async () => {
       children: [],
       currentActivity: "Cycle 2",
       delegatesTo: [],
-      emoji: "",
+      emoji: "🤖",
       id: "alpha",
       lastHeartbeat: 2_000_000_000_002,
       name: "Alpha 2",

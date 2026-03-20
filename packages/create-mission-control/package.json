@@ -1,0 +1,19 @@
+{
+  "name": "create-mission-control",
+  "version": "0.1.0",
+  "description": "One-command setup for Mission Control — the OpenClaw agent fleet dashboard",
+  "bin": {
+    "create-mission-control": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["openclaw", "agents", "dashboard", "mission-control"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -1,5 +1,53 @@
 # Mission Control
 
+Personal agent fleet dashboard for [OpenClaw](https://github.com/openclaw/openclaw). See all your agents, manage tasks, track activity in real-time.
+
+## Quick Start
+
+```bash
+npx create-mission-control
+```
+
+That's it. The installer will:
+1. Clone the repo
+2. Install dependencies and build
+3. Auto-detect your OpenClaw gateway URL and auth token
+4. Set up a systemd service (Linux)
+5. Start the dashboard
+
+Access it at `http://localhost:3100` (or via Tailscale if configured).
+
+## What You Get
+
+- **Kanban Board** — create, assign, and track tasks across your agent fleet
+- **Agent Status** — see which agents are online, their models, heartbeat intervals
+- **Agent Hierarchy** — org-chart view showing delegation structure (who spawns whom)
+- **Task Plans** — group tasks under a parent plan, track progress across agents
+- **Live Activity Feed** — SSE-powered real-time stream of task updates
+- **Chat Panel** — talk to any agent directly from the dashboard
+- **Settings** — gateway connection info, cron jobs, theme toggle
+- **Zero Dependencies** — SQLite database, no cloud services, no external DBs
+
+## Requirements
+
+- Node.js 18+
+- An OpenClaw instance (local or remote)
+- Git
+
+## Manual Install
+
+If you prefer not to use npx:
+
+```bash
+git clone https://github.com/sontakey/mission-control.git
+cd mission-control
+npm install
+npm run build
+cp .env.example .env
+# Edit .env with your gateway URL and token
+node dist/server/server/index.js
+```
+
 Mission Control is a dashboard for OpenClaw operators. It serves a React single-page app from an Express server, stores operational state in SQLite, and proxies gateway-backed agent, chat, and cron data into a board, activity feed, and squad view.
 
 ## Architecture Overview

@@ -1,66 +1,114 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="${MISSION_CONTROL_REPO_URL:-https://github.com/sontakey/mission-control.git}"
+# Mission Control — Quick Install Script
+# Usage: curl -fsSL https://raw.githubusercontent.com/sontakey/mission-control/main/install.sh | bash
+
+REPO_URL="${MISSION_CONTROL_REPO:-https://github.com/sontakey/mission-control.git}"
 INSTALL_DIR="${MISSION_CONTROL_DIR:-$HOME/mission-control}"
 PORT="${MISSION_CONTROL_PORT:-3100}"
 GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://127.0.0.1:18789}"
-SERVICE_NAME="${MISSION_CONTROL_SERVICE_NAME:-mission-control}"
-NODE_BIN="${MISSION_CONTROL_NODE_BIN:-$(command -v node)}"
-NPM_BIN="${MISSION_CONTROL_NPM_BIN:-$(command -v npm)}"
-DATABASE_FILE="${MISSION_CONTROL_DATABASE_FILE:-$INSTALL_DIR/mission-control.db}"
+SERVICE_NAME="mission-control"
 
-require_command() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Missing required command: $1" >&2
+echo "🎛️  Mission Control — OpenClaw Agent Dashboard"
+echo ""
+
+# Check prerequisites
+for cmd in git node npm; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "❌ Missing: $cmd"
     exit 1
   fi
-}
+done
 
-require_command git
-require_command node
-require_command npm
-require_command sudo
-require_command systemctl
+# Auto-detect gateway token
+TOKEN="${OPENCLAW_TOKEN:-}"
+if [ -z "$TOKEN" ]; then
+  ENV_FILE="$HOME/.openclaw/.env"
+  if [ -f "$ENV_FILE" ]; then
+    TOKEN=$(grep -oP 'GATEWAY_AUTH_TOKEN=\K\S+' "$ENV_FILE" 2>/dev/null || true)
+  fi
+fi
 
-if [ -e "$INSTALL_DIR" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
-  echo "Install directory exists but is not a git checkout: $INSTALL_DIR" >&2
+if [ -z "$TOKEN" ]; then
+  echo "⚠️  Could not auto-detect gateway token."
+  echo "   Set OPENCLAW_TOKEN env var or check: grep GATEWAY_AUTH_TOKEN ~/.openclaw/.env"
+  read -rp "   Enter gateway auth token: " TOKEN
+fi
+
+if [ -z "$TOKEN" ]; then
+  echo "❌ Gateway token is required."
   exit 1
 fi
 
-if [ ! -d "$INSTALL_DIR/.git" ]; then
+# Clone or update
+if [ -d "$INSTALL_DIR/.git" ]; then
+  echo "▸ Updating existing installation..."
+  cd "$INSTALL_DIR" && git pull --ff-only
+else
+  echo "▸ Cloning Mission Control..."
   git clone "$REPO_URL" "$INSTALL_DIR"
+  cd "$INSTALL_DIR"
 fi
 
-cd "$INSTALL_DIR"
-"$NPM_BIN" install
-"$NPM_BIN" run build
+# Install and build
+echo "▸ Installing dependencies..."
+npm install --production=false
 
+echo "▸ Building..."
+npm run build
+
+# Write .env
 cat > .env <<EOF
 PORT=$PORT
 OPENCLAW_GATEWAY_URL=$GATEWAY_URL
-OPENCLAW_TOKEN=${OPENCLAW_TOKEN:-}
-DATABASE_FILE=$DATABASE_FILE
+OPENCLAW_TOKEN=$TOKEN
+DATABASE_FILE=mission-control.db
 EOF
 
-sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF
+# Systemd service (Linux only)
+if command -v systemctl &>/dev/null; then
+  echo "▸ Setting up systemd service..."
+  NODE_BIN=$(which node)
+  USER_NAME=$(whoami)
+
+  sudo tee /etc/systemd/system/$SERVICE_NAME.service >/dev/null <<SVCEOF
 [Unit]
-Description=Mission Control Dashboard
+Description=Mission Control — OpenClaw Agent Dashboard
 After=network.target
 
 [Service]
 Type=simple
-User=$USER
+User=$USER_NAME
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$NODE_BIN dist/server/index.js
+ExecStart=$NODE_BIN dist/server/server/index.js
 Restart=always
+RestartSec=5
 EnvironmentFile=$INSTALL_DIR/.env
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SVCEOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable --now "$SERVICE_NAME"
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now $SERVICE_NAME
+  echo "✓ Service started"
+fi
 
-echo "Mission Control running at http://$(hostname):$PORT"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🎛️  Mission Control is ready!"
+echo ""
+echo "  Local:     http://localhost:$PORT"
+
+# Detect Tailscale
+TS_NAME=$(tailscale status --self --json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['Self']['DNSName'].rstrip('.'))" 2>/dev/null || true)
+if [ -n "$TS_NAME" ]; then
+  echo "  Tailscale:  http://$TS_NAME:$PORT"
+fi
+
+echo ""
+echo "  Gateway:   $GATEWAY_URL"
+echo "  Config:    $INSTALL_DIR/.env"
+echo ""
