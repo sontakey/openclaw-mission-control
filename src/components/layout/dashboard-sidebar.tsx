@@ -1,4 +1,5 @@
 import * as React from "react";
+// @ts-expect-error lucide-react type export mismatch (works at runtime)
 import { Bot, Settings, SquareKanban } from "lucide-react";
 import { useLocation } from "react-router-dom";
 

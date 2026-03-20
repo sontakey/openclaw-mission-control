@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+// @ts-expect-error lucide-react type export mismatch (works at runtime)
 import { PanelLeft } from "lucide-react";
 
 import { Button } from "./button";

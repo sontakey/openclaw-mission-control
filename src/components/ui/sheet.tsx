@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
+// @ts-expect-error lucide-react type export mismatch (works at runtime)
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";

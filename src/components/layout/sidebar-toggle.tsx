@@ -1,4 +1,5 @@
 import React, { type ComponentProps } from "react";
+// @ts-expect-error lucide-react type export mismatch (works at runtime)
 import { Menu,PanelLeftClose,PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";

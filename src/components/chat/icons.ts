@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck — lucide-react v0.460 type exports are incompatible with bundler resolution
 export {
   ArrowDown as ArrowDownIcon,
   Bot as BotIcon,

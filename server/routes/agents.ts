@@ -158,8 +158,39 @@ function getAgentIdFromSessionKey(sessionKey: string | null) {
 }
 
 
+
+const AGENT_EMOJIS: Record<string, string> = {
+  anton: "🎯",
+  marv: "🔧",
+  harry: "📢",
+  kevin: "🧪",
+  dexter: "🖥️",
+  penny: "📝",
+  harvey: "⚖️",
+  ava: "💰",
+  rae: "🔬",
+  voice: "🗣️",
+};
+
+const AGENT_ROLES: Record<string, string> = {
+  anton: "Orchestrator",
+  marv: "Engineer",
+  harry: "Marketing",
+  kevin: "QA",
+  dexter: "DevOps",
+  penny: "Research & Docs",
+  harvey: "Legal",
+  ava: "Billing",
+  rae: "Clinical Research",
+  voice: "Voice Assistant",
+};
+
 function deriveAgentRole(id: string, item: Record<string, unknown>): string {
-  // Try to get model.primary as a readable description
+  // Use known role map first
+  if (AGENT_ROLES[id]) {
+    return AGENT_ROLES[id];
+  }
+  // Fall back to model.primary
   const model = item.model;
   if (isRecord(model)) {
     const primary = (model as Record<string, unknown>).primary;
@@ -220,7 +251,7 @@ function getAgentConfigs(value: unknown) {
       }
 
       return {
-        emoji: getString(item, ["emoji", "icon"]) ?? "",
+        emoji: getString(item, ["emoji", "icon"]) ?? AGENT_EMOJIS[id ?? ""] ?? "",
         id,
         name: getString(item, ["name", "label"]) ?? id,
         role: getString(item, ["role"]) ?? deriveAgentRole(id, item),
