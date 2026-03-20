@@ -423,31 +423,27 @@ echo "Mission Control running at http://$(hostname):$PORT"
 
 ---
 
-## 12. Phase Plan
+## 12. Tasks
 
-### Phase 1 (MVP) — Target: Working dashboard
-1. Server scaffolding (Express + SQLite + SSE)
-2. Gateway client (agent discovery, session proxy)
-3. React app with routing (Board, Agents, Settings)
-4. Kanban board (full CRUD, task detail modal)
-5. Agent status panel (live from gateway)
-6. Activity feed (SSE-powered)
-7. Chat panel (send/receive via gateway sessions)
-8. Dark/light theme
-9. Systemd deployment + install script
-
-### Phase 2 (Polish)
-- Drag-and-drop kanban columns
-- Agent CLI (`mc` command)
-- Keyboard shortcuts
-- Task search/filter
-- Mobile-responsive layout
-- Notification sounds
-
-### Phase 3 (Distribution)
-- Package as clawhub skill
-- Docker image option
-- One-line install from any OpenClaw instance
+- [ ] Scaffold project: package.json, tsconfig.json, tsconfig.server.json, vite.config.ts, tailwind config. Install dependencies: react, react-dom, react-router-dom, express, better-sqlite3, @types/better-sqlite3, @types/express, tailwindcss v4, lucide-react, clsx, tailwind-merge, vite, typescript, tsx, @radix-ui/react-dialog, @radix-ui/react-scroll-area, @radix-ui/react-popover, @radix-ui/react-tooltip, @radix-ui/react-collapsible, @radix-ui/react-select, @radix-ui/react-separator, class-variance-authority. Set up the directory structure from section 3.
+- [ ] Create server/db.ts with SQLite schema (tasks, subtasks, comments, activities tables from section 4). Create server/index.ts Express entry that serves static files from dist/client and mounts API routes. Add build scripts to package.json: "dev" (concurrent vite dev + tsx server), "build" (vite build + tsc server), "start" (node dist/server/index.js).
+- [ ] Create server/gateway-client.ts — HTTP client for OpenClaw gateway at localhost:18789. Implement invokeTool(), listSessions(), sendToSession(), getSessionHistory(), listCrons(), getConfig() per section 6. Auth via OPENCLAW_TOKEN env var.
+- [ ] Create server/sse.ts — SSE broadcast manager. Manages connected clients, broadcasts events typed per section 8. Create server/routes/health.ts with GET /health endpoint.
+- [ ] Create server/routes/tasks.ts — full CRUD per section 5 (GET list, GET detail with subtasks+comments, POST create, PATCH update, DELETE, POST comments, POST/PATCH subtasks). On every mutation, log to activities table and broadcast via SSE.
+- [ ] Create server/routes/agents.ts — GET /api/agents reads gateway config (agents.list) and merges with live session data (sessions_list). GET /api/agents/:id/sessions returns sessions for a specific agent. Polls gateway every 30s and caches.
+- [ ] Create server/routes/activities.ts — GET /api/activities (paginated, recent first). GET /api/activities/stream is the SSE endpoint.
+- [ ] Create server/routes/chat.ts — POST /api/chat/send proxies to gateway sessions_send. GET /api/chat/history/:sessionKey proxies to gateway sessions_history.
+- [ ] Set up React frontend: src/main.tsx, src/App.tsx with react-router-dom (routes: / for Board, /agents, /settings). Create src/lib/api.ts fetch wrapper and src/lib/utils.ts with cn() helper. Create src/styles/globals.css with the Clawe-inspired oklch theme variables (section 10) but with teal brand color.
+- [ ] Create shadcn-style UI primitives in src/components/ui/: button, badge, card, dialog, scroll-area, popover, tooltip, input, textarea, select, separator, skeleton, spinner. Use the Clawe reference files in reference/ as the source — adapt them to remove @clawe/ui imports and use local paths.
+- [ ] Build the layout shell: src/components/layout/sidebar.tsx (icon sidebar with Board, Agents, Settings nav items), src/components/layout/header.tsx, src/components/layout/app-layout.tsx (sidebar + header + main content area + chat panel slot). Match the Clawe dashboard layout from reference/layout.tsx.
+- [ ] Build the Kanban board: src/components/kanban/kanban-board.tsx, kanban-column.tsx, kanban-card.tsx, task-detail-modal.tsx, types.ts. Adapt from reference/kanban/ components — replace Convex useQuery/useMutation with fetch calls to /api/tasks. Include the new-task dialog.
+- [ ] Build src/hooks/useSSE.ts — subscribes to /api/activities/stream, parses SSE events, exposes typed event callbacks. Build src/hooks/useTasks.ts — fetch tasks, CRUD operations with optimistic updates, auto-refresh on SSE task events. Build src/hooks/useAgents.ts — poll /api/agents every 30s for live status.
+- [ ] Build the agents panel: src/components/agents/agents-panel.tsx and agents-panel-item.tsx for the Board page sidebar (filterable). src/components/agents/agents-page.tsx as the /agents route — grid of agent cards with status. Adapt from reference/agents-panel/ components.
+- [ ] Build the live feed: src/components/live-feed/live-feed.tsx and live-feed-item.tsx. SSE-powered, filterable (All, Tasks, Messages, Online). Adapt from reference/live-feed/ components. Wire into layout as a drawer/panel toggle.
+- [ ] Build the chat panel: src/components/chat/chat-panel.tsx (slide-out right panel), agent selector dropdown, message list, input. POST /api/chat/send to talk to agents, GET /api/chat/history to load history. Adapt from reference/chat/ components.
+- [ ] Build the Settings page: /settings route showing gateway connection info, agent list from config, cron jobs list (read-only from gateway), dark/light theme toggle. Store theme preference in localStorage.
+- [ ] Wire everything together: Board page with agents panel + kanban + live feed button. Verify all API routes work end-to-end. Add dark mode class toggle. Make sure the app builds clean with `npm run build`.
+- [ ] Create install.sh per section 11 — one-command setup script. Create .env.example. Add a README.md with setup instructions, screenshots placeholder, and architecture overview. Final cleanup: remove reference/ dir from git, ensure .gitignore covers node_modules, dist, .env.
 
 ---
 
