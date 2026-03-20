@@ -1,7 +1,6 @@
-"use client";
-
-import { Bot, Loader2 } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { BotIcon, Loader2Icon } from "./icons";
 
 export type ChatThinkingProps = {
   activity?: string;
@@ -13,14 +12,14 @@ export const ChatThinking = ({ activity, className }: ChatThinkingProps) => {
     <div className={cn("flex gap-3", className)}>
       {/* Avatar */}
       <div className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-        <Bot className="h-4 w-4" />
+        <BotIcon className="h-4 w-4" />
       </div>
 
       {/* Thinking indicator */}
       <div className="bg-muted flex items-center gap-2 rounded-2xl px-4 py-3">
         {activity ? (
           <>
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />
             <span className="text-muted-foreground text-sm">{activity}</span>
           </>
         ) : (

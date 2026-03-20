@@ -7,6 +7,7 @@ import { getDatabase } from "./db.js";
 import { activitiesRouter } from "./routes/activities.js";
 import { agentsRouter } from "./routes/agents.js";
 import { chatRouter } from "./routes/chat.js";
+import { gatewayRouter } from "./routes/gateway.js";
 import { healthRouter } from "./routes/health.js";
 import { tasksRouter } from "./routes/tasks.js";
 
@@ -35,6 +36,7 @@ export function createApp({
   app.use("/api/activities", activitiesRouter);
   app.use("/api/agents", agentsRouter);
   app.use("/api/chat", chatRouter);
+  app.use("/api/gateway", gatewayRouter);
   app.use(express.static(clientDistPath));
 
   app.get(/^\/(?!api(?:\/|$)).*/, (_request, response) => {

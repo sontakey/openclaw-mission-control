@@ -21,6 +21,16 @@ function useRouter() {
   return useContext(RouterContext);
 }
 
+export function useLocation() {
+  const { pathname } = useRouter();
+  return { pathname };
+}
+
+export function useNavigate() {
+  const { navigate } = useRouter();
+  return navigate;
+}
+
 function createProvider(children, pathname, navigate) {
   return React.createElement(
     RouterContext.Provider,
@@ -109,6 +119,14 @@ export function Routes({ children }) {
   const match = Children.toArray(children).find((child) => {
     if (!React.isValidElement(child)) {
       return false;
+    }
+
+    if (child.props.path === "*") {
+      return true;
+    }
+
+    if (typeof child.props.path === "string" && child.props.path.endsWith("/*")) {
+      return pathname.startsWith(child.props.path.slice(0, -2));
     }
 
     return child.props.path === pathname;

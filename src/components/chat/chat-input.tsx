@@ -1,16 +1,18 @@
-"use client";
-
-import { useState, useCallback } from "react";
-import { Send, Square, Paperclip } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import React, {
+  useState,
+  useCallback,
+  type KeyboardEvent,
+} from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@clawe/ui/components/tooltip";
+} from "@/components/ui/tooltip";
 import { ChatInputTextarea } from "./chat-input-textarea";
 import { ChatAttachments } from "./chat-attachments";
+import { PaperclipIcon, SendIcon, SquareIcon } from "./icons";
 import type { ChatAttachment } from "./types";
 
 const MAX_IMAGE_SIZE = 1024;
@@ -98,7 +100,7 @@ export const ChatInput = ({
   }, [canSend, value, attachments, onSend]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
@@ -163,7 +165,7 @@ export const ChatInput = ({
               disabled={disabled || isLoading || isStreaming}
               className="h-10 w-10 shrink-0"
             >
-              <Paperclip className="h-5 w-5" />
+              <PaperclipIcon className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Attach image</TooltipContent>
@@ -187,7 +189,7 @@ export const ChatInput = ({
                 onClick={onStop}
                 className="h-10 w-10 shrink-0"
               >
-                <Square className="h-4 w-4" />
+                <SquareIcon className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Stop generating</TooltipContent>
@@ -201,7 +203,7 @@ export const ChatInput = ({
                 disabled={!canSend}
                 className="h-10 w-10 shrink-0"
               >
-                <Send className="h-4 w-4" />
+                <SendIcon className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Send message</TooltipContent>

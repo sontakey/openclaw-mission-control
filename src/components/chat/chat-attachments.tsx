@@ -1,8 +1,7 @@
-"use client";
-
-import { X } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { XIcon } from "./icons";
 import type { ChatAttachment } from "./types";
 
 export type ChatAttachmentsProps = {
@@ -60,7 +59,7 @@ const AttachmentPreview = ({
           onClick={() => onRemove(attachment.id)}
           className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
         >
-          <X className="h-3 w-3" />
+          <XIcon className="h-3 w-3" />
         </Button>
       )}
     </div>

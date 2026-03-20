@@ -240,6 +240,24 @@ function sendBadRequest(response: Response, error: string) {
   response.status(400).json({ error });
 }
 
+async function sendHistoryResponse(
+  response: Response,
+  loadSessionHistory: (sessionKey: string, limit?: number) => Promise<unknown>,
+  sessionKey: string | undefined,
+) {
+  if (!sessionKey) {
+    sendBadRequest(response, "sessionKey is required.");
+    return;
+  }
+
+  try {
+    const history = await loadSessionHistory(sessionKey);
+    response.json(cleanMessages(history));
+  } catch {
+    response.status(502).json({ error: "Failed to load chat history." });
+  }
+}
+
 export function createChatRouter({
   getSessionHistory: loadSessionHistory = getSessionHistory,
   sendToSession: sendMessageToSession = sendToSession,
@@ -275,20 +293,20 @@ export function createChatRouter({
     }
   });
 
+  router.get("/history", async (request, response) => {
+    await sendHistoryResponse(
+      response,
+      loadSessionHistory,
+      getTrimmedString(request.query.sessionKey),
+    );
+  });
+
   router.get("/history/:sessionKey", async (request, response) => {
-    const sessionKey = getTrimmedString(request.params.sessionKey);
-
-    if (!sessionKey) {
-      sendBadRequest(response, "sessionKey is required.");
-      return;
-    }
-
-    try {
-      const history = await loadSessionHistory(sessionKey);
-      response.json(cleanMessages(history));
-    } catch {
-      response.status(502).json({ error: "Failed to load chat history." });
-    }
+    await sendHistoryResponse(
+      response,
+      loadSessionHistory,
+      getTrimmedString(request.params.sessionKey),
+    );
   });
 
   return router;

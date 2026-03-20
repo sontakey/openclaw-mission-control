@@ -1,8 +1,6 @@
-"use client";
-
-import { ScrollArea } from "@clawe/ui/components/scroll-area";
-import { cn } from "@clawe/ui/lib/utils";
-import type { Agent } from "@clawe/backend/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Agent } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { AgentsPanelItem } from "./agents-panel-item";
 
 export type AgentsPanelListProps = {
@@ -23,11 +21,11 @@ export const AgentsPanelList = ({
       <div className={cn("space-y-1", collapsed ? "px-1 py-2" : "p-2")}>
         {agents.map((agent) => (
           <AgentsPanelItem
-            key={agent._id}
+            key={agent.id}
             agent={agent}
             collapsed={collapsed}
-            selected={selectedAgentIds.includes(agent._id)}
-            onToggle={() => onToggleAgent?.(agent._id)}
+            selected={selectedAgentIds.includes(agent.id)}
+            onToggle={() => onToggleAgent?.(agent.id)}
           />
         ))}
       </div>

@@ -1,7 +1,12 @@
-import type { ActivityType, ActivityWithDetails } from "@clawe/backend/types";
+import type { Activity, Agent, TaskRecord } from "@/lib/types";
 
-// Re-export from shared types for convenience
-export type { ActivityType };
-export type FeedActivity = ActivityWithDetails;
+export type ActivityType = Activity["type"];
+
+export type FeedActivity = Activity & {
+  _id: string;
+  agent?: Pick<Agent, "emoji" | "name"> | null;
+  createdAt: number;
+  task?: Pick<TaskRecord, "title"> | null;
+};
 
 export type FeedFilter = "all" | "tasks" | "status" | "heartbeats";

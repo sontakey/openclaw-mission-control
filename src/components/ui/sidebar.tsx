@@ -1,29 +1,30 @@
-"use client";
-
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
+import lucideIcons from "lucide-react";
 
-import { useIsMobile } from "@clawe/ui/hooks/use-mobile";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
-import { Input } from "@clawe/ui/components/input";
-import { Separator } from "@clawe/ui/components/separator";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Separator } from "./separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@clawe/ui/components/sheet";
-import { Skeleton } from "@clawe/ui/components/skeleton";
+} from "./sheet";
+import { Skeleton } from "./skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@clawe/ui/components/tooltip";
+} from "./tooltip";
+
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+
+const PanelLeftIcon = lucideIcons.PanelLeft;
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -267,7 +268,7 @@ function SidebarTrigger({
       variant="ghost"
       size="icon"
       className={cn("size-7", className)}
-      onClick={(event) => {
+      onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
         onClick?.(event);
         toggleSidebar();
       }}

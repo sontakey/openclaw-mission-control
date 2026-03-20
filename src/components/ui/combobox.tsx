@@ -1,17 +1,16 @@
-"use client";
-
 import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import { Button } from "./button";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@clawe/ui/components/input-group";
+} from "./input-group";
+
+import { cn } from "@/lib/utils";
 
 const Combobox = ComboboxPrimitive.Root;
 

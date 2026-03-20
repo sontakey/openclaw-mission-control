@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -12,14 +10,15 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@clawe/ui/components/popover";
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
 import type { KanbanTask } from "./types";
-import { Button } from "@clawe/ui/components/button";
 
 export type KanbanCardProps = {
   task: KanbanTask;

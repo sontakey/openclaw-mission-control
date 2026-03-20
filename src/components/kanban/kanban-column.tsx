@@ -1,5 +1,4 @@
-"use client";
-
+import React, { type ComponentType, type SVGProps } from "react";
 import {
   Inbox,
   CircleDot,
@@ -10,14 +9,15 @@ import {
   Moon,
   Target,
 } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+
 import { KanbanCard } from "./kanban-card";
 import { columnVariants, type KanbanColumnDef, type KanbanTask } from "./types";
-import { ScrollArea } from "@clawe/ui/components/scroll-area";
 
 const columnIconComponents: Record<
   KanbanColumnDef["variant"],
-  React.ComponentType<{ className?: string; strokeWidth?: number }>
+  ComponentType<SVGProps<SVGSVGElement>>
 > = {
   inbox: Inbox,
   assigned: CircleDot,
@@ -28,7 +28,7 @@ const columnIconComponents: Record<
 
 const emptyStateIcons: Record<
   KanbanColumnDef["variant"],
-  React.ComponentType<{ className?: string; strokeWidth?: number }>
+  ComponentType<SVGProps<SVGSVGElement>>
 > = {
   inbox: Mail,
   assigned: Moon,

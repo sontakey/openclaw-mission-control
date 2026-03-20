@@ -1,12 +1,16 @@
-"use client";
-
-import { useRef, useCallback, useEffect } from "react";
-import { cn } from "@clawe/ui/lib/utils";
+import React, {
+  useRef,
+  useCallback,
+  useEffect,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import { cn } from "@/lib/utils";
 
 export type ChatInputTextareaProps = {
   value: string;
   onChange: (value: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -38,7 +42,7 @@ export const ChatInputTextarea = ({
   }, [value, resize]);
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value);
     },
     [onChange],

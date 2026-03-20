@@ -51,11 +51,13 @@ async function invokeRoute(
     method,
     params,
     path,
+    query,
   }: {
     body?: unknown;
     method: "get" | "post";
     params?: Record<string, string>;
     path: string;
+    query?: Record<string, string>;
   },
 ) {
   const handler = getRouteHandler(router, method, path);
@@ -65,6 +67,7 @@ async function invokeRoute(
     {
       body,
       params: params ?? {},
+      query: query ?? {},
     },
     response,
   );
@@ -221,6 +224,40 @@ test("chat router returns a cleaned message history array", async () => {
       createdAt: 1_710_936_124_000,
       id: "msg-3",
       role: "system",
+    },
+  ]);
+});
+
+test("chat router supports history requests via query string sessionKey", async () => {
+  const router = createChatRouter({
+    getSessionHistory: async (sessionKey) => {
+      assert.equal(sessionKey, "agent:beta:main");
+      return [
+        {
+          content: "Ready.",
+          createdAt: 1_710_936_200_000,
+          id: "msg-9",
+          role: "assistant",
+        },
+      ];
+    },
+  });
+
+  const response = await invokeRoute(router, {
+    method: "get",
+    path: "/history",
+    query: {
+      sessionKey: "agent:beta:main",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, [
+    {
+      content: "Ready.",
+      createdAt: 1_710_936_200_000,
+      id: "msg-9",
+      role: "assistant",
     },
   ]);
 });

@@ -1,25 +1,26 @@
-"use client";
-
-import {
+import React, {
   createContext,
   useContext,
   useState,
   useCallback,
   useEffect,
+  type ReactNode,
 } from "react";
-import { X } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import lucideIcons from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+const X = lucideIcons.X;
 
 type DrawerState = {
   isOpen: boolean;
-  title?: React.ReactNode;
-  content: React.ReactNode;
+  title?: ReactNode;
+  content: ReactNode;
 };
 
 type DrawerContextValue = {
   isOpen: boolean;
-  openDrawer: (content: React.ReactNode, title?: React.ReactNode) => void;
+  openDrawer: (content: ReactNode, title?: ReactNode) => void;
   closeDrawer: () => void;
 };
 
@@ -33,14 +34,14 @@ export const useDrawer = () => {
   return context;
 };
 
-export const DrawerProvider = ({ children }: { children: React.ReactNode }) => {
+export const DrawerProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<DrawerState>({
     isOpen: false,
     content: null,
   });
 
   const openDrawer = useCallback(
-    (content: React.ReactNode, title?: React.ReactNode) => {
+    (content: ReactNode, title?: ReactNode) => {
       setState({ isOpen: true, content, title });
     },
     [],

@@ -1,17 +1,13 @@
-"use client";
-
-import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@clawe/backend";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@clawe/ui/components/dialog";
-import { Button } from "@clawe/ui/components/button";
-import { Textarea } from "@clawe/ui/components/textarea";
-import { cn } from "@clawe/ui/lib/utils";
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   Circle,
   CheckCircle2,
@@ -22,11 +18,12 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import type { Id } from "@clawe/backend/dataModel";
+
 import type { KanbanTask } from "./types";
-import type { DocumentWithCreator } from "@clawe/backend/types";
-import { DocumentsSection } from "./_components/documents-section";
-import { DocumentViewerModal } from "./_components/document-viewer-modal";
+import {
+  approveKanbanTask,
+  requestKanbanTaskChanges,
+} from "./task-actions";
 
 function timeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -70,18 +67,11 @@ export const TaskDetailModal = ({
   open,
   onOpenChange,
 }: TaskDetailModalProps) => {
-  const [selectedDocument, setSelectedDocument] =
-    useState<DocumentWithCreator | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subtasksOpen, setSubtasksOpen] = useState(false);
-  const [docsOpen, setDocsOpen] = useState(true);
-  const [docsShowAll, setDocsShowAll] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
-
-  const approve = useMutation(api.tasks.approve);
-  const requestChanges = useMutation(api.tasks.requestChanges);
 
   if (!task) return null;
 
@@ -95,9 +85,7 @@ export const TaskDetailModal = ({
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      await approve({
-        taskId: task.id as Id<"tasks">,
-      });
+      await approveKanbanTask(task.id);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -108,10 +96,7 @@ export const TaskDetailModal = ({
     if (!feedback.trim()) return;
     setIsSubmitting(true);
     try {
-      await requestChanges({
-        taskId: task.id as Id<"tasks">,
-        feedback: feedback.trim(),
-      });
+      await requestKanbanTaskChanges(task.id, feedback);
       setFeedback("");
       setShowFeedback(false);
       onOpenChange(false);
@@ -282,16 +267,6 @@ export const TaskDetailModal = ({
               </div>
             )}
 
-            {/* Documents section */}
-            <DocumentsSection
-              taskId={task.id}
-              onViewDocument={setSelectedDocument}
-              open={docsOpen}
-              onToggle={() => setDocsOpen(!docsOpen)}
-              maxVisible={docsShowAll ? undefined : 2}
-              onShowAll={() => setDocsShowAll(true)}
-            />
-
             {/* Review actions */}
             {isReview && (
               <div className="bg-muted/50 rounded-lg p-4">
@@ -360,13 +335,6 @@ export const TaskDetailModal = ({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Document viewer modal */}
-      <DocumentViewerModal
-        document={selectedDocument}
-        open={selectedDocument !== null}
-        onOpenChange={(isOpen) => !isOpen && setSelectedDocument(null)}
-      />
     </>
   );
 };

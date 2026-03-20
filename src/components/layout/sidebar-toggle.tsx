@@ -1,14 +1,17 @@
-"use client";
+import React, { type ComponentProps } from "react";
+import lucideIcons from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
-import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { Button } from "@clawe/ui/components/button";
-import { useSidebar } from "@clawe/ui/components/sidebar";
-import { cn } from "@clawe/ui/lib/utils";
+const Menu = lucideIcons.Menu;
+const PanelLeftClose = lucideIcons.PanelLeftClose;
+const PanelLeftOpen = lucideIcons.PanelLeftOpen;
 
 export function SidebarToggle({
   className,
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: ComponentProps<typeof Button>) {
   const { toggleSidebar, state, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
 

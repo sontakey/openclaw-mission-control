@@ -1,7 +1,6 @@
-"use client";
-
-import { MessageSquare } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { MessageSquareIcon } from "./icons";
 
 export type ChatEmptyProps = {
   className?: string;
@@ -16,7 +15,7 @@ export const ChatEmpty = ({ className }: ChatEmptyProps) => {
       )}
     >
       <div className="bg-muted mb-4 flex h-12 w-12 items-center justify-center rounded-full">
-        <MessageSquare className="text-muted-foreground h-6 w-6" />
+        <MessageSquareIcon className="text-muted-foreground h-6 w-6" />
       </div>
 
       <h3 className="text-foreground mb-2 text-lg font-semibold">

@@ -1,8 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type LucideIcon } from "lucide-react";
+import React, { type ComponentType, type SVGProps } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 import {
   SidebarGroup,
@@ -10,16 +7,18 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@clawe/ui/components/sidebar";
-import { cn } from "@clawe/ui/lib/utils";
+} from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 export const sidebarMenuButtonActiveStyles =
   "font-normal data-[active=true]:bg-transparent data-[active=true]:font-normal data-[active=true]:text-pink-600 data-[active=true]:hover:bg-pink-600/5 dark:data-[active=true]:bg-transparent dark:data-[active=true]:text-pink-400 dark:data-[active=true]:hover:bg-pink-400/5";
 
+type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
+
 export interface NavItem {
   title: string;
   url: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   onClick?: () => void;
   badge?: string;
   disabled?: boolean;
@@ -30,7 +29,7 @@ interface NavMainProps {
 }
 
 export const NavMain = ({ items }: NavMainProps) => {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   const isActive = (url: string) => {
     if (url === "/") return pathname === "/";
@@ -76,7 +75,7 @@ export const NavMain = ({ items }: NavMainProps) => {
                 {item.onClick || item.disabled ? (
                   content
                 ) : (
-                  <Link href={item.url}>{content}</Link>
+                  <Link to={item.url}>{content}</Link>
                 )}
               </SidebarMenuButton>
               {item.badge && (

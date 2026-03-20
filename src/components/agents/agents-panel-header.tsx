@@ -1,7 +1,5 @@
-"use client";
-
 import { Users } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 export type AgentsPanelHeaderProps = {
   total: number;

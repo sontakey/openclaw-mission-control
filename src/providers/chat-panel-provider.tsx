@@ -1,6 +1,10 @@
-"use client";
-
-import { createContext, useContext, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 type ChatPanelContextValue = {
   isOpen: boolean;
@@ -22,7 +26,7 @@ export const useChatPanel = () => {
 export const ChatPanelProvider = ({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 

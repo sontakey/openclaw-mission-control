@@ -1,13 +1,11 @@
-"use client";
-
-import { cn } from "@clawe/ui/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@clawe/ui/components/tooltip";
-import type { Agent } from "@clawe/backend/types";
-import { deriveStatus, type AgentStatus } from "@clawe/shared/agents";
+} from "@/components/ui/tooltip";
+import { deriveStatus, type AgentStatus } from "@/lib/agents";
+import type { Agent } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const statusConfig: Record<
   AgentStatus,
@@ -167,7 +165,7 @@ export const AgentsPanelItem = ({
           <p className="text-xs">
             {status === "online"
               ? "Active now"
-              : `Last active: ${formatRelativeTime(agent.lastSeen)}`}
+              : `Last active: ${formatRelativeTime(agent.lastHeartbeat ?? undefined)}`}
           </p>
         </TooltipContent>
       </Tooltip>

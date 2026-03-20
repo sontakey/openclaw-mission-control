@@ -1,17 +1,16 @@
-"use client";
-
-import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@clawe/backend";
-import { cn } from "@clawe/ui/lib/utils";
-import { ScrollArea } from "@clawe/ui/components/scroll-area";
+import React, { useState, useMemo } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useActivities } from "@/hooks/useActivities";
+import { cn } from "@/lib/utils";
+
 import { LiveFeedItem } from "./live-feed-item";
 import type { FeedActivity, FeedFilter } from "./types";
 
 /** Title component for use in drawer header */
 export const LiveFeedTitle = ({ limit = 50 }: { limit?: number }) => {
-  const activities = useQuery(api.activities.feed, { limit });
+  const activities = useActivities(limit);
   const count = activities?.length ?? 0;
 
   return (
@@ -62,7 +61,7 @@ export type LiveFeedProps = {
 export const LiveFeed = ({ className, limit = 50 }: LiveFeedProps) => {
   const [activeFilter, setActiveFilter] = useState<FeedFilter>("all");
 
-  const activities = useQuery(api.activities.feed, { limit });
+  const activities = useActivities(limit);
 
   const filteredActivities = useMemo(() => {
     if (!activities) return [];

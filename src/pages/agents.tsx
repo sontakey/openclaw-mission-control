@@ -1,16 +1,14 @@
-"use client";
+import React from "react";
 
-import { useQuery } from "convex/react";
-import { api } from "@clawe/backend";
-import {
-  PageHeader,
-  PageHeaderRow,
-  PageHeaderTitle,
-} from "@dashboard/page-header";
-import { Badge } from "@clawe/ui/components/badge";
-import { Skeleton } from "@clawe/ui/components/skeleton";
-import { deriveStatus, type AgentStatus } from "@clawe/shared/agents";
-import { WeeklyRoutineGrid } from "./_components/weekly-routine-grid";
+import { PageHeader } from "@/components/layout/page-header/page-header";
+import { PageHeaderActions } from "@/components/layout/page-header/page-header-actions";
+import { PageHeaderRow } from "@/components/layout/page-header/page-header-row";
+import { PageHeaderTitle } from "@/components/layout/page-header/page-header-title";
+import { ChatPanelToggle } from "@/components/layout/chat-panel-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAgents } from "@/hooks/useAgents";
+import { deriveStatus, type AgentStatus } from "@/lib/agents";
 
 const statusConfig: Record<
   AgentStatus,
@@ -44,13 +42,16 @@ const formatLastSeen = (timestamp?: number): string => {
 };
 
 const AgentsPage = () => {
-  const agents = useQuery(api.agents.squad, {});
+  const { agents, isLoading, status } = useAgents();
 
   return (
     <>
       <PageHeader>
         <PageHeaderRow>
           <PageHeaderTitle>Squad</PageHeaderTitle>
+          <PageHeaderActions>
+            <ChatPanelToggle />
+          </PageHeaderActions>
         </PageHeaderRow>
       </PageHeader>
 
@@ -61,7 +62,7 @@ const AgentsPage = () => {
             Your AI agents and their current status.
           </p>
 
-          {agents === undefined ? (
+          {status === "idle" || isLoading ? (
             <div className="flex flex-wrap gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <AgentCardSkeleton key={i} />
@@ -72,12 +73,15 @@ const AgentsPage = () => {
           ) : (
             <div className="flex flex-wrap gap-4">
               {agents.map((agent) => {
-                const status = deriveStatus(agent);
+                const status = deriveStatus({
+                  lastHeartbeat: agent.lastHeartbeat ?? undefined,
+                  status: agent.status,
+                });
                 const config = statusConfig[status];
 
                 return (
                   <div
-                    key={agent._id}
+                    key={agent.id}
                     className="flex w-52 flex-col rounded-lg border p-4"
                   >
                     <div className="mb-3 flex items-center justify-between">
@@ -103,14 +107,16 @@ const AgentsPage = () => {
                     </p>
 
                     <div className="mt-auto pt-4">
-                      {agent.currentTask ? (
+                      {agent.currentActivity ? (
                         <p className="truncate text-xs">
-                          <span className="text-muted-foreground">Task: </span>
-                          {agent.currentTask.title}
+                          <span className="text-muted-foreground">
+                            Activity:{" "}
+                          </span>
+                          {agent.currentActivity}
                         </p>
                       ) : (
                         <p className="text-muted-foreground text-xs">
-                          Last seen: {formatLastSeen(agent.lastHeartbeat)}
+                          Last seen: {formatLastSeen(agent.lastHeartbeat ?? undefined)}
                         </p>
                       )}
                     </div>
@@ -119,12 +125,6 @@ const AgentsPage = () => {
               })}
             </div>
           )}
-        </section>
-
-        {/* Weekly Routines section */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold">Weekly Routines</h2>
-          <WeeklyRoutineGrid />
         </section>
       </div>
     </>

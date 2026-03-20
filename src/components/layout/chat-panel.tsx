@@ -1,10 +1,9 @@
-"use client";
-
-import { cn } from "@clawe/ui/lib/utils";
+import React from "react";
+import { cn } from "@/lib/utils";
 import { Chat } from "@/components/chat";
 import { useChatPanel } from "@/providers/chat-panel-provider";
 
-const CLAWE_SESSION_KEY = "agent:main:main";
+const MISSION_CONTROL_SESSION_KEY = "agent:main:main";
 
 export const ChatPanel = () => {
   const { isOpen, close } = useChatPanel();
@@ -19,7 +18,7 @@ export const ChatPanel = () => {
       {isOpen && (
         <div className="bg-background flex h-full flex-col overflow-hidden rounded-xl border">
           <Chat
-            sessionKey={CLAWE_SESSION_KEY}
+            sessionKey={MISSION_CONTROL_SESSION_KEY}
             mode="panel"
             onClose={close}
             className="h-full border-l-0"

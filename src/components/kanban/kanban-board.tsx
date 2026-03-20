@@ -1,8 +1,7 @@
-"use client";
+import React, { useState } from "react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
-import { useState } from "react";
-import { cn } from "@clawe/ui/lib/utils";
-import { ScrollArea, ScrollBar } from "@clawe/ui/components/scroll-area";
 import { KanbanColumn } from "./kanban-column";
 import { TaskDetailModal } from "./task-detail-modal";
 import type { KanbanBoardProps, KanbanTask } from "./types";

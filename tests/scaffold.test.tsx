@@ -14,7 +14,7 @@ import { MemoryRouter } from "react-router-dom";
 import { createDatabase } from "../server/db.js";
 import { createApp } from "../server/index.js";
 import { app } from "../server/index.js";
-import App from "../src/App";
+import { AppShell } from "../src/App";
 
 const requiredPaths = [
   "server/index.ts",
@@ -23,11 +23,13 @@ const requiredPaths = [
   "server/routes/activities.ts",
   "server/routes/agents.ts",
   "server/routes/chat.ts",
+  "server/routes/gateway.ts",
   "server/routes/health.ts",
   "server/gateway-client.ts",
   "server/sse.ts",
   "src/main.tsx",
   "src/App.tsx",
+  "src/pages/settings.tsx",
   "src/styles/globals.css",
   "src/components/kanban/.gitkeep",
   "src/components/agents/.gitkeep",
@@ -84,12 +86,12 @@ test("section 3 scaffold paths exist", async () => {
 test("app renders the agents route", () => {
   const html = renderToStaticMarkup(
     <MemoryRouter initialEntries={["/agents"]}>
-      <App />
+      <AppShell />
     </MemoryRouter>,
   );
 
-  assert.match(html, /Agents/);
-  assert.match(html, /Agent status panels/);
+  assert.match(html, /Squad/);
+  assert.match(html, /Your AI agents and their current status\./);
 });
 
 test("health endpoint responds with ok", async () => {

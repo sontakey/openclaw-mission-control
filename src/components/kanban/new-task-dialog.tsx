@@ -1,10 +1,6 @@
-"use client";
-
-import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@clawe/backend";
+import React, { type FormEvent, useState } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@clawe/ui/components/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +9,23 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@clawe/ui/components/dialog";
-import { Input } from "@clawe/ui/components/input";
-import { Label } from "@clawe/ui/components/label";
-import { Textarea } from "@clawe/ui/components/textarea";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@clawe/ui/components/select";
-import { Spinner } from "@clawe/ui/components/spinner";
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 
-type Priority = "low" | "normal" | "high" | "urgent";
+import {
+  createKanbanTask,
+  type KanbanTaskPriority as Priority,
+} from "./task-actions";
 
 export const NewTaskDialog = () => {
   const [open, setOpen] = useState(false);
@@ -35,17 +34,15 @@ export const NewTaskDialog = () => {
   const [priority, setPriority] = useState<Priority>("normal");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createTask = useMutation(api.tasks.createFromDashboard);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await createTask({
+      await createKanbanTask({
         title: title.trim(),
-        description: description.trim() || undefined,
+        description,
         priority,
       });
       setOpen(false);
@@ -109,7 +106,7 @@ export const NewTaskDialog = () => {
               <Label htmlFor="priority">Priority</Label>
               <Select
                 value={priority}
-                onValueChange={(value) => setPriority(value as Priority)}
+                onValueChange={(value: string) => setPriority(value as Priority)}
               >
                 <SelectTrigger id="priority">
                   <SelectValue placeholder="Select priority" />

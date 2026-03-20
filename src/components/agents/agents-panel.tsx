@@ -1,8 +1,5 @@
-"use client";
-
-import { useQuery } from "convex/react";
-import { api } from "@clawe/backend";
-import { cn } from "@clawe/ui/lib/utils";
+import { useAgents } from "@/hooks/useAgents";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { AgentsPanelHeader } from "./agents-panel-header";
 import { AgentsPanelList } from "./agents-panel-list";
@@ -20,9 +17,9 @@ export const AgentsPanel = ({
   selectedAgentIds = [],
   onSelectionChange,
 }: AgentsPanelProps) => {
-  const agents = useQuery(api.agents.squad, {});
+  const { agents, isLoading, status } = useAgents();
 
-  const total = agents?.length ?? 0;
+  const total = agents.length;
 
   const handleToggleAgent = (agentId: string) => {
     if (!onSelectionChange) return;
@@ -38,7 +35,7 @@ export const AgentsPanel = ({
     <div className={cn("flex h-full flex-col border-r", className)}>
       <AgentsPanelHeader total={total} collapsed={collapsed} />
 
-      {!agents ? (
+      {status === "idle" || isLoading ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
         </div>

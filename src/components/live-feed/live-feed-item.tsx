@@ -1,5 +1,5 @@
-"use client";
-
+import type { ReactNode } from "react";
+import React from "react";
 import {
   Heart,
   CheckCircle2,
@@ -8,7 +8,9 @@ import {
   Bell,
   Zap,
 } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
+
+import { cn } from "@/lib/utils";
+
 import type { FeedActivity } from "./types";
 
 const formatRelativeTime = (timestamp: number): string => {
@@ -43,7 +45,7 @@ const getAgentColor = (name: string): string => {
 // Get activity type config
 const getActivityConfig = (
   type: FeedActivity["type"],
-): { icon: React.ReactNode; color: string; verb: string } => {
+): { icon: ReactNode; color: string; verb: string } => {
   switch (type) {
     case "agent_heartbeat":
       return {

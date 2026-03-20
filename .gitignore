@@ -1,4 +1,5 @@
 .npm-cache
 dist
 node_modules
-mission-control.db
+.env
+*.db

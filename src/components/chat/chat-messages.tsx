@@ -1,7 +1,6 @@
-"use client";
-
-import { cn } from "@clawe/ui/lib/utils";
-import { Spinner } from "@clawe/ui/components/spinner";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 import { ChatMessage } from "./chat-message";
 import { ChatEmpty } from "./chat-empty";
 import { ChatThinking } from "./chat-thinking";

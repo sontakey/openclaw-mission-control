@@ -1,7 +1,5 @@
-"use client";
-
 import * as React from "react";
-import { cn } from "@clawe/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 export const PageHeaderRow = ({
   className,

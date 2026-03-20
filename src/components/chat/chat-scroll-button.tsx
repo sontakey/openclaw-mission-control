@@ -1,8 +1,7 @@
-"use client";
-
-import { ArrowDown } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ArrowDownIcon } from "./icons";
 
 export type ChatScrollButtonProps = {
   onClick: () => void;
@@ -23,7 +22,7 @@ export const ChatScrollButton = ({
         onClick={onClick}
         className="gap-1.5 rounded-full shadow-lg"
       >
-        <ArrowDown className="h-4 w-4" />
+        <ArrowDownIcon className="h-4 w-4" />
         {unreadCount && unreadCount > 0 ? (
           <span className="text-xs">{unreadCount} new</span>
         ) : (

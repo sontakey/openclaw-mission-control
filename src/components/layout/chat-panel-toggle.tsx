@@ -1,14 +1,15 @@
-"use client";
-
-import { BotMessageSquare } from "lucide-react";
-import { cn } from "@clawe/ui/lib/utils";
-import { Button } from "@clawe/ui/components/button";
+import React from "react";
+import lucideIcons from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@clawe/ui/components/tooltip";
+} from "@/components/ui/tooltip";
 import { useChatPanel } from "@/providers/chat-panel-provider";
+
+const MessageSquare = lucideIcons.MessageSquare;
 
 export const ChatPanelToggle = () => {
   const { isOpen, toggle } = useChatPanel();
@@ -22,7 +23,7 @@ export const ChatPanelToggle = () => {
           className={cn(isOpen && "bg-accent")}
           onClick={toggle}
         >
-          <BotMessageSquare className="h-4 w-4" />
+          <MessageSquare className="h-4 w-4" />
           Chat
         </Button>
       </TooltipTrigger>

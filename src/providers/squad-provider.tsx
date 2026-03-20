@@ -1,41 +1,22 @@
-"use client";
+import React, { createContext, useContext, type ReactNode } from "react";
 
-import { createContext, useContext, type ReactNode } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@clawe/backend";
+import { useAgents } from "@/hooks/useAgents";
 
-export type Squad = {
-  id: string;
-  name: string;
-  description?: string;
-};
-
-type SquadContextType = {
-  squads: Squad[];
-  selectedSquad: Squad | null;
-  setSelectedSquad: (squad: Squad) => void;
-  isLoading: boolean;
-};
+type SquadContextType = ReturnType<typeof useAgents>;
 
 const SquadContext = createContext<SquadContextType | null>(null);
 
 export const SquadProvider = ({ children }: { children: ReactNode }) => {
-  const tenant = useQuery(api.tenants.getGeneral);
-  const isLoading = tenant === undefined;
-
-  const squad: Squad | null = tenant
-    ? { id: tenant._id, name: tenant.name, description: tenant.description }
-    : null;
-
-  const squads = squad ? [squad] : [];
+  const { agents, error, isLoading, refetch, status } = useAgents();
 
   return (
     <SquadContext.Provider
       value={{
-        squads,
-        selectedSquad: squad,
-        setSelectedSquad: () => {},
+        agents,
+        error,
         isLoading,
+        refetch,
+        status,
       }}
     >
       {children}
