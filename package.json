@@ -1,0 +1,48 @@
+{
+  "name": "mission-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --outDir dist/client && tsc -p tsconfig.server.json",
+    "build:client": "vite build --outDir dist/client",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
+    "dev:server": "tsx watch server/index.ts",
+    "lint": "npm run typecheck:client && npm run typecheck:server",
+    "test": "node --import tsx --test tests/*.test.tsx",
+    "start": "node dist/server/index.js",
+    "typecheck:client": "tsc --noEmit -p tsconfig.json",
+    "typecheck:server": "tsc --noEmit -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "@radix-ui/react-collapsible": "latest",
+    "@radix-ui/react-dialog": "latest",
+    "@radix-ui/react-popover": "latest",
+    "@radix-ui/react-scroll-area": "latest",
+    "@radix-ui/react-select": "latest",
+    "@radix-ui/react-separator": "latest",
+    "@radix-ui/react-tooltip": "latest",
+    "better-sqlite3": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "express": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "latest",
+    "@types/better-sqlite3": "latest",
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "tailwindcss": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  }
+}
