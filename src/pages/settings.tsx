@@ -75,6 +75,91 @@ function getCronStatusLabel(isActive: boolean | null) {
   return "Unknown";
 }
 
+function getNestedValue(obj: unknown, path: string[]): unknown {
+  let current = obj;
+  for (const key of path) {
+    if (current && typeof current === "object" && key in (current as Record<string, unknown>)) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+  return current;
+}
+
+function GatewayConfigSummary({ config }: { config: unknown }) {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+
+  const c = config as Record<string, unknown>;
+  const result = c.result as Record<string, unknown> | undefined;
+  const cfg = (result?.config ?? c.config ?? c) as Record<string, unknown>;
+  
+  const agentCount = (getNestedValue(cfg, ["agents", "list"]) as unknown[] | undefined)?.length ?? 0;
+  const gatewayPort = getNestedValue(cfg, ["gateway", "port"]) as number | undefined;
+  const gatewayMode = getNestedValue(cfg, ["gateway", "mode"]) as string | undefined;
+  const telegramEnabled = getNestedValue(cfg, ["channels", "telegram", "enabled"]) as boolean | undefined;
+  const slackEnabled = getNestedValue(cfg, ["channels", "slack", "enabled"]) as boolean | undefined;
+  const defaultModel = getNestedValue(cfg, ["agents", "defaults", "model", "primary"]) as string | undefined;
+  const heartbeatInterval = getNestedValue(cfg, ["agents", "defaults", "heartbeat", "every"]) as string | undefined;
+  const version = getNestedValue(cfg, ["meta", "lastTouchedVersion"]) as string | undefined;
+  const memoryBackend = getNestedValue(cfg, ["memory", "backend"]) as string | undefined;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-medium">Instance overview</h2>
+      <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        {version && (
+          <div>
+            <dt className="text-muted-foreground">OpenClaw version</dt>
+            <dd>{version}</dd>
+          </div>
+        )}
+        <div>
+          <dt className="text-muted-foreground">Agents configured</dt>
+          <dd>{agentCount}</dd>
+        </div>
+        {defaultModel && (
+          <div>
+            <dt className="text-muted-foreground">Default model</dt>
+            <dd className="font-mono text-xs">{defaultModel}</dd>
+          </div>
+        )}
+        {gatewayPort && (
+          <div>
+            <dt className="text-muted-foreground">Gateway port</dt>
+            <dd>{gatewayPort} ({gatewayMode ?? "local"})</dd>
+          </div>
+        )}
+        {heartbeatInterval && (
+          <div>
+            <dt className="text-muted-foreground">Default heartbeat</dt>
+            <dd>{heartbeatInterval}</dd>
+          </div>
+        )}
+        {memoryBackend && (
+          <div>
+            <dt className="text-muted-foreground">Memory backend</dt>
+            <dd>{memoryBackend}</dd>
+          </div>
+        )}
+        <div>
+          <dt className="text-muted-foreground">Channels</dt>
+          <dd>
+            {[
+              telegramEnabled && "Telegram",
+              slackEnabled && "Slack",
+            ]
+              .filter(Boolean)
+              .join(", ") || "None"}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const [state, setState] = React.useState<SettingsState>({
@@ -181,12 +266,7 @@ const SettingsPage = () => {
                   </div>
                 </dl>
 
-                <div className="space-y-2">
-                  <h2 className="text-sm font-medium">Gateway config</h2>
-                  <pre className="overflow-x-auto rounded-lg border bg-slate-50 p-4 text-xs dark:bg-slate-900">
-                    {JSON.stringify(state.config, null, 2)}
-                  </pre>
-                </div>
+                <GatewayConfigSummary config={state.config} />
               </>
             ) : (
               <p className="text-muted-foreground text-sm">

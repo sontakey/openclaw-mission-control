@@ -157,6 +157,22 @@ function getAgentIdFromSessionKey(sessionKey: string | null) {
   return parts.length >= 3 && parts[1] ? parts[1] : null;
 }
 
+
+function deriveAgentRole(id: string, item: Record<string, unknown>): string {
+  // Try to get model.primary as a readable description
+  const model = item.model;
+  if (isRecord(model)) {
+    const primary = (model as Record<string, unknown>).primary;
+    if (typeof primary === "string") {
+      return primary;
+    }
+  }
+  if (typeof item.model === "string") {
+    return item.model;
+  }
+  return id;
+}
+
 function getAgentConfigs(value: unknown) {
   // The gateway config.get response nests agents at multiple possible paths
   const payload = unwrapGatewayPayload(value);
@@ -207,7 +223,7 @@ function getAgentConfigs(value: unknown) {
         emoji: getString(item, ["emoji", "icon"]) ?? "",
         id,
         name: getString(item, ["name", "label"]) ?? id,
-        role: getString(item, ["role", "workspace", "model"]) ?? "",
+        role: getString(item, ["role"]) ?? deriveAgentRole(id, item),
         sessionKey,
       };
     })

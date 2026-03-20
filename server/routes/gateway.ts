@@ -161,20 +161,47 @@ function getCronList(value: unknown) {
   return [];
 }
 
+function formatSchedule(schedule: unknown): string {
+  if (typeof schedule === "string") {
+    return schedule;
+  }
+  if (!isRecord(schedule)) {
+    return "Unknown";
+  }
+  const kind = schedule.kind;
+  if (kind === "cron" && typeof schedule.expr === "string") {
+    return schedule.expr;
+  }
+  if (kind === "every" && typeof schedule.everyMs === "number") {
+    const ms = schedule.everyMs as number;
+    if (ms >= 86400000) return `Every ${Math.round(ms / 86400000)}d`;
+    if (ms >= 3600000) return `Every ${Math.round(ms / 3600000)}h`;
+    if (ms >= 60000) return `Every ${Math.round(ms / 60000)}m`;
+    return `Every ${Math.round(ms / 1000)}s`;
+  }
+  if (kind === "at" && typeof schedule.at === "string") {
+    return `Once at ${schedule.at}`;
+  }
+  return String(kind ?? "Unknown");
+}
+
 function normalizeCron(value: unknown, index: number): GatewayCron | null {
   if (!isRecord(value)) {
     return null;
   }
 
+  // State may contain nextRunAtMs, lastRunAtMs
+  const state = isRecord(value.state) ? value.state as Record<string, unknown> : {};
+
   return {
     id: getString(value, ["id", "key"]) ?? `cron-${index + 1}`,
     isActive: getBoolean(value, ["active", "enabled", "isActive", "is_active"]),
-    lastRunAt: getTimestamp(value, ["lastRunAt", "last_run_at", "lastRun", "last_run"]),
+    lastRunAt: getTimestamp(state, ["lastRunAtMs", "lastRunAt"]) ?? getTimestamp(value, ["lastRunAt", "last_run_at"]),
     name:
       getString(value, ["name", "label", "task", "job", "command", "action"]) ??
       `Cron ${index + 1}`,
-    nextRunAt: getTimestamp(value, ["nextRunAt", "next_run_at", "nextRun", "next_run"]),
-    schedule: getString(value, ["schedule", "cron", "expression", "pattern"]) ?? "Unknown",
+    nextRunAt: getTimestamp(state, ["nextRunAtMs", "nextRunAt"]) ?? getTimestamp(value, ["nextRunAt", "next_run_at"]),
+    schedule: formatSchedule(value.schedule),
   };
 }
 
