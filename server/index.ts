@@ -64,7 +64,7 @@ function isDirectRun() {
 }
 
 if (isDirectRun()) {
-  const port = Number(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 3100);
 
   app.listen(port, () => {
     console.log(`Mission Control server listening on port ${port}`);

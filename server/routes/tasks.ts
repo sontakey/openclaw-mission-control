@@ -19,10 +19,16 @@ type TaskRow = {
   description: string | null;
   id: string;
   metadata: string | null;
+  parent_task_id: string | null;
   priority: string;
   status: string;
   title: string;
   updated_at: number;
+};
+
+type TaskSummaryRow = TaskRow & {
+  child_count: number;
+  completed_child_count: number;
 };
 
 type SubtaskRow = {
@@ -136,6 +142,24 @@ function getOptionalBoolean(value: unknown) {
   return value;
 }
 
+function getOptionalQueryBoolean(value: unknown) {
+  const normalized = getTrimmedString(getSingleValue(value));
+
+  if (normalized === undefined) {
+    return undefined;
+  }
+
+  if (normalized === "true") {
+    return true;
+  }
+
+  if (normalized === "false") {
+    return false;
+  }
+
+  return null;
+}
+
 function parseJson(value: string | null) {
   if (!value) {
     return null;
@@ -152,6 +176,20 @@ function serializeTask(task: TaskRow) {
   return {
     ...task,
     metadata: parseJson(task.metadata),
+  };
+}
+
+function serializeTaskSummary(task: TaskSummaryRow) {
+  const { child_count, completed_child_count, ...taskRow } = task;
+  const childCount = Number(child_count);
+
+  return {
+    ...serializeTask(taskRow),
+    child_count: childCount,
+    completion_stats: {
+      completed: Number(completed_child_count),
+      total: childCount,
+    },
   };
 }
 
@@ -197,6 +235,77 @@ function getTaskById(db: MissionControlDatabase, taskId: string) {
   return db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as TaskRow | undefined;
 }
 
+const TASK_SUMMARY_SELECT = `
+  SELECT
+    tasks.*,
+    COUNT(child_tasks.id) AS child_count,
+    COALESCE(SUM(CASE WHEN child_tasks.status = 'done' THEN 1 ELSE 0 END), 0) AS completed_child_count
+  FROM tasks
+  LEFT JOIN tasks AS child_tasks ON child_tasks.parent_task_id = tasks.id
+`;
+
+function getTaskSummaryById(db: MissionControlDatabase, taskId: string) {
+  return db
+    .prepare(
+      `${TASK_SUMMARY_SELECT}
+       WHERE tasks.id = ?
+       GROUP BY tasks.id`,
+    )
+    .get(taskId) as TaskSummaryRow | undefined;
+}
+
+function listTaskSummaries(
+  db: MissionControlDatabase,
+  {
+    assignee,
+    parentId,
+    plan,
+    status,
+  }: {
+    assignee?: string;
+    parentId?: string;
+    plan?: boolean;
+    status?: string;
+  } = {},
+) {
+  const conditions: string[] = [];
+  const values: string[] = [];
+
+  if (status) {
+    conditions.push("tasks.status = ?");
+    values.push(status);
+  }
+
+  if (assignee) {
+    conditions.push("tasks.assignee_agent_id = ?");
+    values.push(assignee);
+  }
+
+  if (parentId) {
+    conditions.push("tasks.parent_task_id = ?");
+    values.push(parentId);
+  }
+
+  if (plan === true) {
+    conditions.push("EXISTS (SELECT 1 FROM tasks AS plan_children WHERE plan_children.parent_task_id = tasks.id)");
+  } else if (plan === false) {
+    conditions.push(
+      "NOT EXISTS (SELECT 1 FROM tasks AS plan_children WHERE plan_children.parent_task_id = tasks.id)",
+    );
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  return db
+    .prepare(
+      `${TASK_SUMMARY_SELECT}
+       ${whereClause}
+       GROUP BY tasks.id
+       ORDER BY tasks.updated_at DESC, tasks.created_at DESC, tasks.id DESC`,
+    )
+    .all(...values) as TaskSummaryRow[];
+}
+
 function getSubtaskById(db: MissionControlDatabase, taskId: string, subtaskId: string) {
   return db
     .prepare("SELECT * FROM subtasks WHERE id = ? AND task_id = ?")
@@ -204,7 +313,7 @@ function getSubtaskById(db: MissionControlDatabase, taskId: string, subtaskId: s
 }
 
 function getTaskDetail(db: MissionControlDatabase, taskId: string) {
-  const task = getTaskById(db, taskId);
+  const task = getTaskSummaryById(db, taskId);
 
   if (!task) {
     return undefined;
@@ -216,10 +325,14 @@ function getTaskDetail(db: MissionControlDatabase, taskId: string) {
   const comments = db
     .prepare("SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC, id ASC")
     .all(taskId) as CommentRow[];
+  const parent = task.parent_task_id ? getTaskSummaryById(db, task.parent_task_id) ?? null : null;
+  const children = listTaskSummaries(db, { parentId: task.id });
 
   return {
-    ...serializeTask(task),
+    ...serializeTaskSummary(task),
     comments: comments.map(serializeComment),
+    children: children.map(serializeTaskSummary),
+    parent: parent ? serializeTaskSummary(parent) : null,
     subtasks: subtasks.map(serializeSubtask),
   };
 }
@@ -276,31 +389,27 @@ export function createTasksRouter({
   router.get("/", (request, response) => {
     const status = getTrimmedString(getSingleValue(request.query.status));
     const assignee = getTrimmedString(getSingleValue(request.query.assignee));
+    const parentId = getTrimmedString(getSingleValue(request.query.parent_id));
+    const plan = getOptionalQueryBoolean(request.query.plan);
 
     if (status && !TASK_STATUSES.has(status)) {
       sendBadRequest(response, "Invalid status filter.");
       return;
     }
 
-    const conditions: string[] = [];
-    const values: string[] = [];
-
-    if (status) {
-      conditions.push("status = ?");
-      values.push(status);
+    if (plan === null) {
+      sendBadRequest(response, "Invalid plan filter.");
+      return;
     }
 
-    if (assignee) {
-      conditions.push("assignee_agent_id = ?");
-      values.push(assignee);
-    }
+    const tasks = listTaskSummaries(resolveDb(), {
+      assignee,
+      parentId,
+      plan: plan ?? undefined,
+      status,
+    });
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-    const tasks = resolveDb()
-      .prepare(`SELECT * FROM tasks ${whereClause} ORDER BY updated_at DESC, created_at DESC, id DESC`)
-      .all(...values) as TaskRow[];
-
-    response.json({ tasks: tasks.map(serializeTask) });
+    response.json({ tasks: tasks.map(serializeTaskSummary) });
   });
 
   router.get("/:id", (request, response) => {
@@ -327,7 +436,13 @@ export function createTasksRouter({
     const description = getOptionalString(request.body?.description);
     const assigneeAgentId = getOptionalString(request.body?.assignee_agent_id);
     const createdBy = getOptionalString(request.body?.created_by);
+    const parentTaskId = getOptionalString(request.body?.parent_task_id);
     const metadata = request.body?.metadata;
+
+    if (request.body?.parent_task_id !== undefined && parentTaskId === undefined) {
+      sendBadRequest(response, "parent_task_id must be a string or null.");
+      return;
+    }
 
     if (!TASK_STATUSES.has(status)) {
       sendBadRequest(response, "Invalid status.");
@@ -341,6 +456,12 @@ export function createTasksRouter({
 
     const now = Math.floor(Date.now() / 1000);
     const database = resolveDb();
+
+    if (parentTaskId && !getTaskById(database, parentTaskId)) {
+      sendBadRequest(response, "Parent task not found.");
+      return;
+    }
+
     const result = runInTransaction(database, () => {
       const task = database
         .prepare(
@@ -354,9 +475,10 @@ export function createTasksRouter({
              created_at,
              updated_at,
              completed_at,
-             metadata
+             metadata,
+             parent_task_id
            )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            RETURNING *`,
         )
         .get(
@@ -370,6 +492,7 @@ export function createTasksRouter({
           now,
           status === "done" ? now : null,
           metadata === undefined ? null : JSON.stringify(metadata),
+          parentTaskId ?? null,
         ) as TaskRow;
       const activity = insertActivity(database, {
         agentId: createdBy ?? assigneeAgentId ?? null,

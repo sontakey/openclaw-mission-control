@@ -49,11 +49,14 @@ export interface Task extends TaskRecord {
 }
 
 export interface Agent {
+  children: string[];
   currentActivity: string | null;
+  delegatesTo: string[];
   emoji: string;
   id: string;
   lastHeartbeat: number | null;
   name: string;
+  parentId: string | null;
   role: string;
   sessionKey: string | null;
   status: AgentStatus;

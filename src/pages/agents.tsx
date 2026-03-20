@@ -1,45 +1,13 @@
 import React from "react";
 
+import { AgentTree } from "@/components/agents/agent-tree";
 import { PageHeader } from "@/components/layout/page-header/page-header";
 import { PageHeaderActions } from "@/components/layout/page-header/page-header-actions";
 import { PageHeaderRow } from "@/components/layout/page-header/page-header-row";
 import { PageHeaderTitle } from "@/components/layout/page-header/page-header-title";
 import { ChatPanelToggle } from "@/components/layout/chat-panel-toggle";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAgents } from "@/hooks/useAgents";
-import { deriveStatus, type AgentStatus } from "@/lib/agents";
-
-const statusConfig: Record<
-  AgentStatus,
-  { dotColor: string; bgColor: string; textColor: string; label: string }
-> = {
-  online: {
-    dotColor: "bg-emerald-500",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-    textColor: "text-emerald-700 dark:text-emerald-400",
-    label: "Online",
-  },
-  offline: {
-    dotColor: "bg-gray-400",
-    bgColor: "",
-    textColor: "",
-    label: "Offline",
-  },
-};
-
-const formatLastSeen = (timestamp?: number): string => {
-  if (!timestamp) return "Never";
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(timestamp).toLocaleDateString();
-};
 
 const AgentsPage = () => {
   const { agents, isLoading, status } = useAgents();
@@ -71,59 +39,7 @@ const AgentsPage = () => {
           ) : agents.length === 0 ? (
             <p className="text-muted-foreground">No agents registered yet.</p>
           ) : (
-            <div className="flex flex-wrap gap-4">
-              {agents.map((agent) => {
-                const status = deriveStatus({
-                  lastHeartbeat: agent.lastHeartbeat ?? undefined,
-                  status: agent.status,
-                });
-                const config = statusConfig[status];
-
-                return (
-                  <div
-                    key={agent.id}
-                    className="flex w-52 flex-col rounded-lg border p-4"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-3xl">{agent.emoji}</span>
-                      {status === "offline" ? (
-                        <Badge variant="outline">{config.label}</Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className={`${config.bgColor} ${config.textColor}`}
-                        >
-                          <span
-                            className={`mr-1.5 h-1.5 w-1.5 rounded-full ${config.dotColor}`}
-                          />
-                          {config.label}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <h3 className="mb-1 font-medium">{agent.name}</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {agent.role}
-                    </p>
-
-                    <div className="mt-auto pt-4">
-                      {agent.currentActivity ? (
-                        <p className="truncate text-xs">
-                          <span className="text-muted-foreground">
-                            Activity:{" "}
-                          </span>
-                          {agent.currentActivity}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground text-xs">
-                          Last seen: {formatLastSeen(agent.lastHeartbeat ?? undefined)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <AgentTree agents={agents} />
           )}
         </section>
       </div>

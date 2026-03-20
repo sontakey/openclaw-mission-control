@@ -128,21 +128,27 @@ test("agents router merges configured agents with live sessions", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, [
     {
+      children: [],
       currentActivity: "Debugging",
+      delegatesTo: [],
       emoji: "A",
       id: "alpha",
       lastHeartbeat: 1_700_003_600_000,
       name: "Alpha",
+      parentId: null,
       role: "Lead",
       sessionKey: "agent:alpha:debug",
       status: "online",
     },
     {
+      children: [],
       currentActivity: null,
+      delegatesTo: [],
       emoji: "B",
       id: "beta",
       lastHeartbeat: null,
       name: "Beta",
+      parentId: null,
       role: "Builder",
       sessionKey: "agent:beta:main",
       status: "offline",
@@ -213,6 +219,144 @@ test("agents router returns live sessions for one agent", async () => {
   ]);
 });
 
+test("agents router adds hierarchy fields from configured subagents", async () => {
+  const app = createTestApp({
+    getConfig: async () => ({
+      agents: {
+        list: [
+          {
+            id: "marv",
+            name: "Marv",
+            role: "Engineer",
+            subagents: {
+              allowAgents: ["kevin"],
+            },
+          },
+          {
+            default: true,
+            id: "anton",
+            name: "Anton",
+            role: "Orchestrator",
+            subagents: {
+              allowAgents: ["marv", "harry", "kevin"],
+            },
+          },
+          {
+            id: "harry",
+            name: "Harry",
+            role: "Marketing",
+            subagents: {
+              allowAgents: ["penny"],
+            },
+          },
+          {
+            id: "kevin",
+            name: "Kevin",
+            role: "QA",
+          },
+          {
+            id: "penny",
+            name: "Penny",
+            role: "Research",
+          },
+          {
+            id: "voice",
+            name: "Voice",
+            role: "Assistant",
+          },
+        ],
+      },
+    }),
+    listSessions: async () => ({
+      sessions: [],
+    }),
+  });
+
+  const response = await requestApp(app, { path: "/api/agents" });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, [
+    {
+      children: ["kevin"],
+      currentActivity: null,
+      delegatesTo: ["kevin"],
+      emoji: "🔧",
+      id: "marv",
+      lastHeartbeat: null,
+      name: "Marv",
+      parentId: "anton",
+      role: "Engineer",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: ["marv", "harry"],
+      currentActivity: null,
+      delegatesTo: ["marv", "harry", "kevin"],
+      emoji: "🎯",
+      id: "anton",
+      lastHeartbeat: null,
+      name: "Anton",
+      parentId: null,
+      role: "Orchestrator",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: ["penny"],
+      currentActivity: null,
+      delegatesTo: ["penny"],
+      emoji: "📢",
+      id: "harry",
+      lastHeartbeat: null,
+      name: "Harry",
+      parentId: "anton",
+      role: "Marketing",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: [],
+      currentActivity: null,
+      delegatesTo: [],
+      emoji: "🧪",
+      id: "kevin",
+      lastHeartbeat: null,
+      name: "Kevin",
+      parentId: "marv",
+      role: "QA",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: [],
+      currentActivity: null,
+      delegatesTo: [],
+      emoji: "📝",
+      id: "penny",
+      lastHeartbeat: null,
+      name: "Penny",
+      parentId: "harry",
+      role: "Research",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: [],
+      currentActivity: null,
+      delegatesTo: [],
+      emoji: "🗣️",
+      id: "voice",
+      lastHeartbeat: null,
+      name: "Voice",
+      parentId: null,
+      role: "Assistant",
+      sessionKey: null,
+      status: "offline",
+    },
+  ]);
+});
+
 test("agents router caches gateway data for 30 seconds", async () => {
   let now = 1_000;
   let configCalls = 0;
@@ -271,11 +415,14 @@ test("agents router caches gateway data for 30 seconds", async () => {
   assert.equal(sessionCalls, 2);
   assert.deepEqual(refreshedResponse.body, [
     {
+      children: [],
       currentActivity: "Cycle 2",
+      delegatesTo: [],
       emoji: "",
       id: "alpha",
       lastHeartbeat: 2_000_000_000_002,
       name: "Alpha 2",
+      parentId: null,
       role: "Lead",
       sessionKey: "agent:alpha:main",
       status: "online",

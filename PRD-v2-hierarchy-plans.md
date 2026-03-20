@@ -115,10 +115,10 @@ When a task has children, it renders as a **plan card** (visually distinct):
 
 ## Tasks
 
-- [ ] Add `parent_task_id` column to tasks table via migration in server/db.ts. Add index. Handle existing DB gracefully (ALTER TABLE IF NOT EXISTS pattern).
-- [ ] Update server/routes/tasks.ts: POST accepts parent_task_id, GET returns parent/children data, add plan filter query params. Include child count and completion stats in list response.
-- [ ] Update server/routes/agents.ts: add parentId, children, delegatesTo fields to agent response. Build hierarchy tree from config subagents.allowAgents. Root = default agent.
-- [ ] Create src/components/agents/agent-tree.tsx: org-chart tree component. CSS flexbox layout with connecting lines. Each node: emoji, name, role, status badge, current task. Click to expand details. Standalone agents shown separately below.
+- [x] Add `parent_task_id` column to tasks table via migration in server/db.ts. Add index. Handle existing DB gracefully (ALTER TABLE IF NOT EXISTS pattern).
+- [x] Update server/routes/tasks.ts: POST accepts parent_task_id, GET returns parent/children data, add plan filter query params. Include child count and completion stats in list response.
+- [x] Update server/routes/agents.ts: add parentId, children, delegatesTo fields to agent response. Build hierarchy tree from config subagents.allowAgents. Root = default agent.
+- [x] Create src/components/agents/agent-tree.tsx: org-chart tree component. CSS flexbox layout with connecting lines. Each node: emoji, name, role, status badge, current task. Click to expand details. Standalone agents shown separately below.
 - [ ] Update src/pages/agents.tsx: add Tree/Grid toggle. Default to tree view. Grid view uses existing agent cards.
 - [ ] Create src/components/kanban/plan-card.tsx: visually distinct plan card with thick left border, progress bar, multi-agent avatars, expand/collapse for children list.
 - [ ] Update src/components/kanban/kanban-board.tsx and kanban-column.tsx: group tasks by parent. Plans render as plan-cards. Standalone tasks render as normal cards. Plan position = furthest-behind child status.

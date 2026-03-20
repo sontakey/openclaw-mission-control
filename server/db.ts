@@ -16,7 +16,8 @@ export const SCHEMA_SQL = `
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
     completed_at INTEGER,
-    metadata TEXT
+    metadata TEXT,
+    parent_task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL
   );
 
   CREATE TABLE IF NOT EXISTS subtasks (
@@ -59,15 +60,45 @@ export const SCHEMA_SQL = `
     ON activities(agent_id);
 `;
 
+const TASK_PARENT_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id
+    ON tasks(parent_task_id);
+`;
+
 export type MissionControlDatabase = Database.Database;
 
+type TableInfoRow = {
+  name: string;
+};
+
 let database: MissionControlDatabase | undefined;
+
+function hasColumn(
+  db: MissionControlDatabase,
+  tableName: string,
+  columnName: string,
+) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as TableInfoRow[];
+  return columns.some((column) => column.name === columnName);
+}
+
+function migrateDatabase(db: MissionControlDatabase) {
+  if (!hasColumn(db, "tasks", "parent_task_id")) {
+    db.exec(`
+      ALTER TABLE tasks
+      ADD COLUMN parent_task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL;
+    `);
+  }
+
+  db.exec(TASK_PARENT_INDEX_SQL);
+}
 
 export function createDatabase(filename = DATABASE_FILE) {
   const db = new Database(filename);
 
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
+  migrateDatabase(db);
 
   return db;
 }

@@ -244,7 +244,104 @@ test("tasks router supports CRUD with comments, subtasks, activity logging, and 
   );
 });
 
-test("tasks router filters list responses by status and assignee", async (t) => {
+test("tasks router creates child tasks and returns parent and children detail", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  const parentResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      title: "Launch plan",
+    }),
+    method: "POST",
+    path: "/api/tasks",
+  });
+
+  assert.equal(parentResponse.status, 201);
+  const parentTask = parentResponse.body?.task as Record<string, unknown>;
+  const parentId = String(parentTask.id);
+
+  const firstChildResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      parent_task_id: parentId,
+      status: "done",
+      title: "Ship API",
+    }),
+    method: "POST",
+    path: "/api/tasks",
+  });
+
+  assert.equal(firstChildResponse.status, 201);
+  const firstChild = firstChildResponse.body?.task as Record<string, unknown>;
+  assert.equal(firstChild.parent_task_id, parentId);
+
+  const secondChildResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      parent_task_id: parentId,
+      status: "review",
+      title: "Verify UI",
+    }),
+    method: "POST",
+    path: "/api/tasks",
+  });
+
+  assert.equal(secondChildResponse.status, 201);
+  const secondChild = secondChildResponse.body?.task as Record<string, unknown>;
+  assert.equal(secondChild.parent_task_id, parentId);
+
+  const parentDetailResponse = await requestApp(server.app, {
+    path: `/api/tasks/${parentId}`,
+  });
+
+  assert.equal(parentDetailResponse.status, 200);
+  const parentDetail = parentDetailResponse.body?.task as Record<string, unknown>;
+  const parentChildren = parentDetail.children as Array<Record<string, unknown>>;
+
+  assert.equal(parentDetail.parent, null);
+  assert.equal(parentDetail.child_count, 2);
+  assert.deepEqual(parentDetail.completion_stats, {
+    completed: 1,
+    total: 2,
+  });
+  assert.deepEqual(
+    new Set(parentChildren.map((child) => child.id)),
+    new Set([firstChild.id, secondChild.id]),
+  );
+
+  const childDetailResponse = await requestApp(server.app, {
+    path: `/api/tasks/${String(firstChild.id)}`,
+  });
+
+  assert.equal(childDetailResponse.status, 200);
+  const childDetail = childDetailResponse.body?.task as Record<string, unknown>;
+  const childParent = childDetail.parent as Record<string, unknown>;
+
+  assert.equal(childDetail.child_count, 0);
+  assert.deepEqual(childDetail.children, []);
+  assert.equal(childParent.id, parentId);
+  assert.equal(childParent.child_count, 2);
+  assert.deepEqual(childParent.completion_stats, {
+    completed: 1,
+    total: 2,
+  });
+
+  const invalidParentResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      parent_task_id: "missing-task",
+      title: "Broken child",
+    }),
+    method: "POST",
+    path: "/api/tasks",
+  });
+
+  assert.equal(invalidParentResponse.status, 400);
+  assert.deepEqual(invalidParentResponse.body, {
+    error: "Parent task not found.",
+  });
+});
+
+test("tasks router filters list responses by status, assignee, plan, and parent", async (t) => {
   const server = await createTestServer();
   t.after(async () => {
     server.close();
@@ -255,36 +352,65 @@ test("tasks router filters list responses by status and assignee", async (t) => 
       `INSERT INTO tasks (id, title, status, assignee_agent_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run("task-a", "Backlog", "in_progress", "agent-1", 1, 3);
+    .run("plan-a", "Plan A", "in_progress", "agent-1", 1, 6);
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, assignee_agent_id, parent_task_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run("child-a", "Child A", "done", "agent-1", "plan-a", 2, 5);
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, assignee_agent_id, parent_task_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run("child-b", "Child B", "review", "agent-2", "plan-a", 3, 4);
   server.db
     .prepare(
       `INSERT INTO tasks (id, title, status, assignee_agent_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run("task-b", "Review", "review", "agent-1", 2, 2);
+    .run("task-solo", "Standalone", "review", "agent-1", 4, 3);
   server.db
     .prepare(
       `INSERT INTO tasks (id, title, status, assignee_agent_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run("task-c", "Done", "review", "agent-2", 3, 1);
+    .run("plan-b", "Plan B", "review", "agent-2", 5, 2);
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, assignee_agent_id, parent_task_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run("child-c", "Child C", "done", "agent-1", "plan-b", 6, 1);
 
   const reviewResponse = await requestApp(server.app, { path: "/api/tasks?status=review" });
   const reviewTasks = reviewResponse.body?.tasks as Array<Record<string, unknown>>;
 
   assert.equal(reviewResponse.status, 200);
-  assert.equal(reviewTasks.length, 2);
-  assert.deepEqual(
-    new Set(reviewTasks.map((task) => task.id)),
-    new Set(["task-b", "task-c"]),
-  );
+  assert.deepEqual(reviewTasks.map((task) => task.id), ["child-b", "task-solo", "plan-b"]);
+  assert.equal(reviewTasks[2]?.child_count, 1);
+  assert.deepEqual(reviewTasks[2]?.completion_stats, {
+    completed: 1,
+    total: 1,
+  });
 
   const assigneeResponse = await requestApp(server.app, { path: "/api/tasks?assignee=agent-1" });
   const assigneeTasks = assigneeResponse.body?.tasks as Array<Record<string, unknown>>;
 
   assert.equal(assigneeResponse.status, 200);
-  assert.equal(assigneeTasks.length, 2);
+  assert.deepEqual(assigneeTasks.map((task) => task.id), [
+    "plan-a",
+    "child-a",
+    "task-solo",
+    "child-c",
+  ]);
   assert.ok(assigneeTasks.every((task) => task.assignee_agent_id === "agent-1"));
+  assert.equal(assigneeTasks[0]?.child_count, 2);
+  assert.deepEqual(assigneeTasks[0]?.completion_stats, {
+    completed: 1,
+    total: 2,
+  });
 
   const combinedResponse = await requestApp(server.app, {
     path: "/api/tasks?status=review&assignee=agent-1",
@@ -292,10 +418,29 @@ test("tasks router filters list responses by status and assignee", async (t) => 
   const combinedTasks = combinedResponse.body?.tasks as Array<Record<string, unknown>>;
 
   assert.equal(combinedResponse.status, 200);
-  assert.deepEqual(combinedTasks.map((task) => task.id), ["task-b"]);
+  assert.deepEqual(combinedTasks.map((task) => task.id), ["task-solo"]);
+
+  const planResponse = await requestApp(server.app, { path: "/api/tasks?plan=true" });
+  const planTasks = planResponse.body?.tasks as Array<Record<string, unknown>>;
+
+  assert.equal(planResponse.status, 200);
+  assert.deepEqual(planTasks.map((task) => task.id), ["plan-a", "plan-b"]);
+  assert.ok(planTasks.every((task) => Number(task.child_count) > 0));
+
+  const childrenResponse = await requestApp(server.app, {
+    path: "/api/tasks?parent_id=plan-a",
+  });
+  const childTasks = childrenResponse.body?.tasks as Array<Record<string, unknown>>;
+
+  assert.equal(childrenResponse.status, 200);
+  assert.deepEqual(childTasks.map((task) => task.id), ["child-a", "child-b"]);
+  assert.ok(childTasks.every((task) => task.parent_task_id === "plan-a"));
 
   const invalidResponse = await requestApp(server.app, { path: "/api/tasks?status=invalid" });
+  const invalidPlanResponse = await requestApp(server.app, { path: "/api/tasks?plan=maybe" });
 
   assert.equal(invalidResponse.status, 400);
   assert.deepEqual(invalidResponse.body, { error: "Invalid status filter." });
+  assert.equal(invalidPlanResponse.status, 400);
+  assert.deepEqual(invalidPlanResponse.body, { error: "Invalid plan filter." });
 });

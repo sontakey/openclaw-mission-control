@@ -59,22 +59,28 @@ test("agents ui uses local hooks and utilities instead of Convex squad data", as
 });
 
 test("agents ui uses local agent fields and removes the weekly routine grid", async () => {
-  const [page, list, item] = await Promise.all([
+  const [page, list, item, tree] = await Promise.all([
     readProjectFile("src/pages/agents.tsx"),
     readProjectFile("src/components/agents/agents-panel-list.tsx"),
     readProjectFile("src/components/agents/agents-panel-item.tsx"),
+    readProjectFile("src/components/agents/agent-tree.tsx"),
   ]);
 
-  assert.match(page, /agent\.id/, "agents page should key cards by agent.id");
+  assert.match(page, /AgentTree/, "agents page should render the agent tree");
   assert.match(
-    page,
+    tree,
+    /key=\{agent\.id\}/,
+    "agent tree should key cards by agent.id",
+  );
+  assert.match(
+    tree,
     /currentActivity/,
-    "agents page should render currentActivity instead of currentTask",
+    "agent tree should render currentActivity instead of currentTask",
   );
   assert.doesNotMatch(
-    page,
+    tree,
     /agent\._id|currentTask|WeeklyRoutineGrid|weekly-routine-grid/,
-    "agents page still references removed Convex fields or weekly routine grid",
+    "agent tree still references removed Convex fields or weekly routine grid",
   );
 
   assert.match(list, /agent\.id/, "agents panel list should use agent.id");
