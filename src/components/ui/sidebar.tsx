@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import lucideIcons from "lucide-react";
+import { PanelLeft } from "lucide-react";
 
 import { Button } from "./button";
 import { Input } from "./input";
@@ -24,7 +24,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
-const PanelLeftIcon = lucideIcons.PanelLeft;
+const PanelLeftIcon = PanelLeft;
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;

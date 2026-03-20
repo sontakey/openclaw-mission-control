@@ -1,5 +1,5 @@
 import React from "react";
-import lucideIcons from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useChatPanel } from "@/providers/chat-panel-provider";
 
-const MessageSquare = lucideIcons.MessageSquare;
+const MessageSquare = MessageSquare;
 
 export const ChatPanelToggle = () => {
   const { isOpen, toggle } = useChatPanel();

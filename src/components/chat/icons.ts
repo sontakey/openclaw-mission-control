@@ -1,17 +1,12 @@
-import type { ComponentType, SVGProps } from "react";
-import lucideIcons from "lucide-react";
-
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-
-const icons = lucideIcons as Record<string, IconComponent>;
-
-export const ArrowDownIcon = icons.ArrowDown;
-export const BotIcon = icons.Bot;
-export const InfoIcon = icons.Info;
-export const Loader2Icon = icons.Loader2;
-export const MessageSquareIcon = icons.MessageSquare;
-export const PaperclipIcon = icons.Paperclip;
-export const SendIcon = icons.Send;
-export const SquareIcon = icons.Square;
-export const UserIcon = icons.User;
-export const XIcon = icons.X;
+export {
+  ArrowDown as ArrowDownIcon,
+  Bot as BotIcon,
+  Info as InfoIcon,
+  Loader2 as Loader2Icon,
+  MessageSquare as MessageSquareIcon,
+  Paperclip as PaperclipIcon,
+  Send as SendIcon,
+  Square as SquareIcon,
+  User as UserIcon,
+  X as XIcon,
+} from "lucide-react";

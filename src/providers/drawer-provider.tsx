@@ -6,11 +6,11 @@ import React, {
   useEffect,
   type ReactNode,
 } from "react";
-import lucideIcons from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const X = lucideIcons.X;
+const X = X;
 
 type DrawerState = {
   isOpen: boolean;

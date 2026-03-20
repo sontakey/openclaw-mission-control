@@ -158,13 +158,39 @@ function getAgentIdFromSessionKey(sessionKey: string | null) {
 }
 
 function getAgentConfigs(value: unknown) {
+  // The gateway config.get response nests agents at multiple possible paths
   const payload = unwrapGatewayPayload(value);
 
-  if (!isRecord(payload) || !isRecord(payload.agents) || !Array.isArray(payload.agents.list)) {
+  // Try multiple paths where agents.list might live
+  let agentsList: unknown[] | null = null;
+  
+  if (isRecord(payload)) {
+    // Direct: payload.agents.list
+    if (isRecord(payload.agents) && Array.isArray((payload.agents as Record<string, unknown>).list)) {
+      agentsList = (payload.agents as Record<string, unknown>).list as unknown[];
+    }
+    // Nested: payload.result.config.agents.list (gateway config.get response)
+    else if (isRecord(payload.result)) {
+      const result = payload.result as Record<string, unknown>;
+      const config = (isRecord(result.config) ? result.config : result) as Record<string, unknown>;
+      if (isRecord(config.agents) && Array.isArray((config.agents as Record<string, unknown>).list)) {
+        agentsList = (config.agents as Record<string, unknown>).list as unknown[];
+      }
+    }
+    // Nested: payload.config.agents.list
+    else if (isRecord(payload.config)) {
+      const config = payload.config as Record<string, unknown>;
+      if (isRecord(config.agents) && Array.isArray((config.agents as Record<string, unknown>).list)) {
+        agentsList = (config.agents as Record<string, unknown>).list as unknown[];
+      }
+    }
+  }
+  
+  if (!agentsList) {
     return [];
   }
 
-  return payload.agents.list
+  return agentsList
     .map((item): AgentConfig | null => {
       if (!isRecord(item)) {
         return null;

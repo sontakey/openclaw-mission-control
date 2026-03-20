@@ -1,5 +1,0 @@
-{
-  "name": "@types/better-sqlite3",
-  "version": "0.0.0-local",
-  "types": "index.d.ts"
-}

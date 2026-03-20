@@ -1,12 +1,12 @@
 import React, { type ComponentProps } from "react";
-import lucideIcons from "lucide-react";
+import { Menu,PanelLeftClose,PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-const Menu = lucideIcons.Menu;
-const PanelLeftClose = lucideIcons.PanelLeftClose;
-const PanelLeftOpen = lucideIcons.PanelLeftOpen;
+const Menu = Menu;
+const PanelLeftClose = PanelLeftClose;
+const PanelLeftOpen = PanelLeftOpen;
 
 export function SidebarToggle({
   className,

@@ -1,10 +1,10 @@
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
-import lucideIcons from "lucide-react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const XIcon = lucideIcons.X;
+const XIcon = X;
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;

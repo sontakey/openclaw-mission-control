@@ -1,5 +1,5 @@
 import * as React from "react";
-import lucideIcons from "lucide-react";
+import { Bot, Settings, SquareKanban } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import { NavMain, type NavItem } from "./nav-main";
@@ -11,7 +11,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const { Bot, Settings, SquareKanban } = lucideIcons;
 
 const navItems: NavItem[] = [
   {

@@ -1,8 +1,0 @@
-{
-  "name": "tw-animate-css",
-  "version": "0.0.0-local",
-  "type": "module",
-  "exports": {
-    ".": "./index.css"
-  }
-}
