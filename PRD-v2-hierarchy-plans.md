@@ -121,8 +121,8 @@ When a task has children, it renders as a **plan card** (visually distinct):
 - [x] Create src/components/agents/agent-tree.tsx: org-chart tree component. CSS flexbox layout with connecting lines. Each node: emoji, name, role, status badge, current task. Click to expand details. Standalone agents shown separately below.
 - [x] Update src/pages/agents.tsx: add Tree/Grid toggle. Default to tree view. Grid view uses existing agent cards.
 - [x] Create src/components/kanban/plan-card.tsx: visually distinct plan card with thick left border, progress bar, multi-agent avatars, expand/collapse for children list.
-- [ ] Update src/components/kanban/kanban-board.tsx and kanban-column.tsx: group tasks by parent. Plans render as plan-cards. Standalone tasks render as normal cards. Plan position = furthest-behind child status.
-- [ ] Update src/components/kanban/new-task-dialog.tsx: add "Part of plan" dropdown and "Create as plan" toggle.
+- [x] Update src/components/kanban/kanban-board.tsx and kanban-column.tsx: group tasks by parent. Plans render as plan-cards. Standalone tasks render as normal cards. Plan position = furthest-behind child status.
+- [x] Update src/components/kanban/new-task-dialog.tsx: add "Part of plan" dropdown and "Create as plan" toggle.
 - [ ] Update src/hooks/useTasks.ts: handle parent_task_id in create, fetch plan data, group tasks by parent for board rendering.
 - [ ] Update src/lib/types.ts: add parent_task_id, children, parent fields to Task type. Add AgentHierarchyNode type.
 - [ ] Build and deploy. Verify: tree renders, plans group on board, create child task under a plan, see progress bar update.

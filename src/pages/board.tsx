@@ -2,7 +2,10 @@ import React from "react";
 import { Bell } from "lucide-react";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
-import { NewTaskDialog } from "@/components/kanban/new-task-dialog";
+import {
+  getNewTaskDialogPlanOptions,
+  NewTaskDialog,
+} from "@/components/kanban/new-task-dialog";
 import {
   type ColumnVariant,
   type KanbanColumnDef,
@@ -50,6 +53,7 @@ export function mapTaskToKanbanTask(task: Task): KanbanTask {
     assignee: task.assignee_agent_id ?? undefined,
     description: task.description ?? undefined,
     id: task.id,
+    parentTaskId: task.parent_task_id ?? undefined,
     priority: mapTaskPriority(task.priority),
     status: task.status,
     subtasks: task.subtasks.map((subtask) => ({
@@ -91,6 +95,7 @@ const BoardPage = () => {
   const { openDrawer } = useDrawer();
 
   const columns = React.useMemo(() => buildBoardColumns(tasks), [tasks]);
+  const planOptions = React.useMemo(() => getNewTaskDialogPlanOptions(tasks), [tasks]);
 
   const handleOpenFeed = React.useCallback(() => {
     openDrawer(<LiveFeed className="h-full" />, <LiveFeedTitle />);
@@ -102,7 +107,7 @@ const BoardPage = () => {
         <PageHeaderRow>
           <PageHeaderTitle>Board</PageHeaderTitle>
           <PageHeaderActions>
-            <NewTaskDialog />
+            <NewTaskDialog plans={planOptions} />
             <Button variant="outline" size="sm" onClick={handleOpenFeed}>
               <Bell className="h-4 w-4" />
               Activity

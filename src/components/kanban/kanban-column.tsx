@@ -13,7 +13,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 import { PlanCard } from "./plan-card";
-import { columnVariants, type KanbanColumnDef, type KanbanTask } from "./types";
+import {
+  columnVariants,
+  type KanbanColumnDef,
+  type KanbanSubtask,
+  type KanbanTask,
+} from "./types";
 
 const columnIconComponents: Record<
   KanbanColumnDef["variant"],
@@ -57,6 +62,119 @@ export type KanbanColumnProps = {
   onTaskClick: (task: KanbanTask) => void;
 };
 
+const priorityBadgeStyles: Record<KanbanTask["priority"], string> = {
+  high: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-200",
+  low: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+  medium: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-200",
+};
+
+function getPriorityLabel(priority: KanbanTask["priority"]) {
+  switch (priority) {
+    case "high":
+      return "High priority";
+    case "low":
+      return "Low priority";
+    default:
+      return "Medium priority";
+  }
+}
+
+function getPlanChildStatus(status?: KanbanTask["status"]): NonNullable<KanbanSubtask["status"]> {
+  switch (status) {
+    case "done":
+      return "done";
+    case "review":
+    case "in_progress":
+      return "in_progress";
+    default:
+      return "pending";
+  }
+}
+
+function buildPlanCardTask(task: KanbanTask): KanbanTask {
+  if (!task.childTasks?.length) {
+    return task;
+  }
+
+  return {
+    ...task,
+    subtasks: task.childTasks.map((childTask) => ({
+      assignee: childTask.assignee,
+      done: childTask.status === "done",
+      id: childTask.id,
+      status: getPlanChildStatus(childTask.status),
+      title: childTask.title,
+    })),
+  };
+}
+
+const TaskCard = ({
+  task,
+  onTaskClick,
+}: {
+  task: KanbanTask;
+  onTaskClick: (task: KanbanTask) => void;
+}) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    onTaskClick(task);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onTaskClick(task)}
+      onKeyDown={handleKeyDown}
+      data-task-card
+      className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50">
+            {task.title}
+          </h3>
+          {task.description ? (
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+              {task.description}
+            </p>
+          ) : null}
+        </div>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase",
+            priorityBadgeStyles[task.priority],
+          )}
+        >
+          {getPriorityLabel(task.priority)}
+        </span>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <span className="truncate">
+          {task.assignee ? task.assignee : "Unassigned"}
+        </span>
+        <div className="flex items-center gap-3">
+          {task.subtasks.length > 0 ? (
+            <span>
+              {task.subtasks.length} subtask{task.subtasks.length === 1 ? "" : "s"}
+            </span>
+          ) : null}
+          {task.documentCount && task.documentCount > 0 ? (
+            <span>
+              {task.documentCount} doc{task.documentCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const KanbanColumn = ({ column, onTaskClick }: KanbanColumnProps) => {
   const variant = columnVariants[column.variant];
   const IconComponent = columnIconComponents[column.variant];
@@ -94,7 +212,15 @@ export const KanbanColumn = ({ column, onTaskClick }: KanbanColumnProps) => {
         ) : (
           <div className="space-y-2">
             {column.tasks.map((task) => (
-              <PlanCard key={task.id} task={task} onTaskClick={onTaskClick} />
+              task.childTasks?.length ? (
+                <PlanCard
+                  key={task.id}
+                  task={buildPlanCardTask(task)}
+                  onTaskClick={onTaskClick}
+                />
+              ) : (
+                <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} />
+              )
             ))}
           </div>
         )}

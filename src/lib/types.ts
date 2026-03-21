@@ -31,12 +31,18 @@ export interface Subtask {
 
 export interface TaskRecord {
   assignee_agent_id: string | null;
+  child_count?: number;
   completed_at: number | null;
+  completion_stats?: {
+    completed: number;
+    total: number;
+  };
   created_at: number;
   created_by: string | null;
   description: string | null;
   id: string;
   metadata: unknown | null;
+  parent_task_id?: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   title: string;
@@ -44,7 +50,9 @@ export interface TaskRecord {
 }
 
 export interface Task extends TaskRecord {
+  children?: TaskRecord[];
   comments: Comment[];
+  parent?: TaskRecord | null;
   subtasks: Subtask[];
 }
 

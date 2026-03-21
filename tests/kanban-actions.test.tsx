@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createKanbanTask,
   approveKanbanTask,
+  buildCreateKanbanTaskPayload,
   requestKanbanTaskChanges,
 } from "../src/components/kanban/task-actions.ts";
 
@@ -72,6 +73,7 @@ test("createKanbanTask posts a trimmed task payload", async () => {
 
   await createKanbanTask({
     description: "  Add the release notes.  ",
+    parentTaskId: "plan-1",
     priority: "urgent",
     title: "  Ship docs  ",
   });
@@ -83,10 +85,24 @@ test("createKanbanTask posts a trimmed task payload", async () => {
     calls[0]?.init?.body,
     JSON.stringify({
       description: "Add the release notes.",
+      parent_task_id: "plan-1",
       priority: "urgent",
       title: "Ship docs",
     }),
   );
+});
+
+test("buildCreateKanbanTaskPayload omits an empty parent plan", () => {
+  const payload = buildCreateKanbanTaskPayload({
+    description: "   ",
+    priority: "normal",
+    title: "  Draft plan  ",
+  });
+
+  assert.deepEqual(payload, {
+    priority: "normal",
+    title: "Draft plan",
+  });
 });
 
 test("approveKanbanTask patches the task to done", async () => {

@@ -4,21 +4,42 @@ const REVIEW_FEEDBACK_AUTHOR = "operator";
 const REVIEW_REWORK_STATUS = "assigned";
 
 export type KanbanTaskPriority = "low" | "normal" | "high" | "urgent";
+export type CreateKanbanTaskInput = {
+  description: string;
+  parentTaskId?: string;
+  priority: KanbanTaskPriority;
+  title: string;
+};
+
+export function buildCreateKanbanTaskPayload({
+  description,
+  parentTaskId,
+  priority,
+  title,
+}: CreateKanbanTaskInput) {
+  const trimmedDescription = description.trim();
+  const trimmedTitle = title.trim();
+
+  return {
+    ...(trimmedDescription ? { description: trimmedDescription } : {}),
+    ...(parentTaskId ? { parent_task_id: parentTaskId } : {}),
+    priority,
+    title: trimmedTitle,
+  };
+}
 
 export async function createKanbanTask({
   description,
+  parentTaskId,
   priority,
   title,
-}: {
-  description: string;
-  priority: KanbanTaskPriority;
-  title: string;
-}) {
-  return apiPost("/api/tasks", {
-    description: description.trim() || undefined,
+}: CreateKanbanTaskInput) {
+  return apiPost("/api/tasks", buildCreateKanbanTaskPayload({
+    description,
+    parentTaskId,
     priority,
-    title: title.trim(),
-  });
+    title,
+  }));
 }
 
 export async function approveKanbanTask(taskId: string) {

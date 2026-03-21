@@ -13,10 +13,12 @@ export type KanbanSubtask = {
 
 // Kanban's own task type (isolated from Convex)
 export type KanbanTask = {
+  childTasks?: KanbanTask[];
   id: string;
   title: string;
   description?: string;
   status?: "inbox" | "assigned" | "in_progress" | "review" | "done";
+  parentTaskId?: string;
   priority: "low" | "medium" | "high";
   assignee?: string;
   subtasks: KanbanSubtask[];
