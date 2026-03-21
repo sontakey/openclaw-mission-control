@@ -56,6 +56,23 @@ function createTestApp(options: Parameters<typeof createAgentsRouter>[0]) {
   return app;
 }
 
+function stripCurrentTask(agent: Record<string, unknown>) {
+  const { currentTask: _currentTask, ...rest } = agent;
+  return rest;
+}
+
+function assertCurrentTaskShape(value: unknown) {
+  if (value === null) {
+    return;
+  }
+
+  assert.equal(typeof value, "object");
+  assert.ok(value !== null);
+  assert.equal(typeof (value as { id?: unknown }).id, "string");
+  assert.equal(typeof (value as { title?: unknown }).title, "string");
+  assert.equal(typeof (value as { status?: unknown }).status, "string");
+}
+
 test("agents router merges configured agents with live sessions", async () => {
   let configCalls = 0;
   let sessionCalls = 0;
@@ -124,9 +141,10 @@ test("agents router merges configured agents with live sessions", async () => {
   });
 
   const response = await requestApp(app, { path: "/api/agents" });
+  const agents = response.body as Array<Record<string, unknown>>;
 
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body, [
+  assert.deepEqual(agents.map(stripCurrentTask), [
     {
       children: ["beta"],
       currentActivity: "Debugging",
@@ -154,6 +172,10 @@ test("agents router merges configured agents with live sessions", async () => {
       status: "offline",
     },
   ]);
+  agents.forEach((agent) => {
+    assert.ok("currentTask" in agent);
+    assertCurrentTaskShape(agent.currentTask);
+  });
   assert.equal(configCalls, 1);
   assert.equal(sessionCalls, 1);
 });
@@ -279,9 +301,10 @@ test("agents router adds hierarchy fields from configured subagents", async () =
   });
 
   const response = await requestApp(app, { path: "/api/agents" });
+  const agents = response.body as Array<Record<string, unknown>>;
 
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body, [
+  assert.deepEqual(agents.map(stripCurrentTask), [
     {
       children: [],
       currentActivity: null,
@@ -361,6 +384,10 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       status: "offline",
     },
   ]);
+  agents.forEach((agent) => {
+    assert.ok("currentTask" in agent);
+    assertCurrentTaskShape(agent.currentTask);
+  });
 });
 
 test("agents router caches gateway data for 30 seconds", async () => {
@@ -416,11 +443,12 @@ test("agents router caches gateway data for 30 seconds", async () => {
 
   now += 2;
   const refreshedResponse = await requestApp(app, { path: "/api/agents" });
+  const refreshedAgents = refreshedResponse.body as Array<Record<string, unknown>>;
 
   assert.equal(refreshedResponse.status, 200);
   assert.equal(configCalls, 2);
   assert.equal(sessionCalls, 2);
-  assert.deepEqual(refreshedResponse.body, [
+  assert.deepEqual(refreshedAgents.map(stripCurrentTask), [
     {
       children: [],
       currentActivity: "Cycle 2",
@@ -435,4 +463,8 @@ test("agents router caches gateway data for 30 seconds", async () => {
       status: "online",
     },
   ]);
+  refreshedAgents.forEach((agent) => {
+    assert.ok("currentTask" in agent);
+    assertCurrentTaskShape(agent.currentTask);
+  });
 });

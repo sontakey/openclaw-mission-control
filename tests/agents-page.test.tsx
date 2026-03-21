@@ -82,6 +82,11 @@ test("agents page defaults to tree view", () => {
 test("agents page renders grid view with the existing agent cards", () => {
   const root = createAgent({
     children: ["child"],
+    currentTask: {
+      id: "task-1",
+      status: "assigned",
+      title: "Review launch brief",
+    },
     delegatesTo: ["child"],
     id: "root",
     name: "Ralph",
@@ -111,6 +116,7 @@ test("agents page renders grid view with the existing agent cards", () => {
   assert.match(html, /Penny/);
   assert.match(html, /Marv/);
   assert.match(html, /Current task/);
+  assert.match(html, /Review launch brief/);
   assert.match(html, /1 report/);
   assert.match(html, /Individual contributor/);
   assert.match(html, /aria-pressed="true"[^>]*>Grid</);

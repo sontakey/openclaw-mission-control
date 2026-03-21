@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { IncomingMessage, ServerResponse } from "node:http";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
 
 import express from "express";
@@ -13,7 +16,11 @@ type BroadcastCall = {
   event: string;
 };
 
-async function createTestServer() {
+async function createTestServer({
+  workQueuePath = null,
+}: {
+  workQueuePath?: string | null;
+} = {}) {
   const db = createDatabase(":memory:");
   const broadcasts: BroadcastCall[] = [];
   const app = express();
@@ -28,6 +35,7 @@ async function createTestServer() {
         },
       },
       db,
+      workQueuePath,
     }),
   );
 
@@ -443,4 +451,85 @@ test("tasks router filters list responses by status, assignee, plan, and parent"
   assert.deepEqual(invalidResponse.body, { error: "Invalid status filter." });
   assert.equal(invalidPlanResponse.status, 400);
   assert.deepEqual(invalidPlanResponse.body, { error: "Invalid plan filter." });
+});
+
+test("tasks router syncs work queue items into task list responses", async (t) => {
+  const workQueueDir = await mkdtemp(join(tmpdir(), "mission-control-work-queue-"));
+  const workQueuePath = join(workQueueDir, "agent-work-queue.json");
+  const server = await createTestServer({ workQueuePath });
+
+  t.after(async () => {
+    server.close();
+    await rm(workQueueDir, { force: true, recursive: true });
+  });
+
+  await writeFile(
+    workQueuePath,
+    JSON.stringify([
+      {
+        deploy_url: "https://deploy.example.com",
+        harness: "playwright",
+        id: "queue-1",
+        loop_manager: "ralph",
+        model: "gpt-5.4",
+        name: "Ship board bridge",
+        owner_agent: "agent-1",
+        status: "running",
+        tmux_session: "ralph.1",
+      },
+      {
+        id: "queue-2",
+        name: "Verify release",
+        owner_agent: "agent-2",
+        status: "completed",
+      },
+    ]),
+  );
+
+  const firstListResponse = await requestApp(server.app, { path: "/api/tasks" });
+  const firstTasks = firstListResponse.body?.tasks as Array<Record<string, unknown>>;
+  const syncedRunningTask = firstTasks.find(
+    (task) => (task.metadata as Record<string, unknown>)?.work_queue_id === "queue-1",
+  );
+  const syncedDoneTask = firstTasks.find(
+    (task) => (task.metadata as Record<string, unknown>)?.work_queue_id === "queue-2",
+  );
+
+  assert.equal(firstListResponse.status, 200);
+  assert.equal(firstTasks.length, 2);
+  assert.equal(syncedRunningTask?.title, "Ship board bridge");
+  assert.equal(syncedRunningTask?.status, "in_progress");
+  assert.equal(syncedRunningTask?.assignee_agent_id, "agent-1");
+  assert.match(String(syncedRunningTask?.description), /Harness: playwright/);
+  assert.match(String(syncedRunningTask?.description), /Loop Manager: ralph/);
+  assert.equal(syncedDoneTask?.status, "done");
+  assert.equal(syncedDoneTask?.assignee_agent_id, "agent-2");
+  assert.equal(typeof syncedDoneTask?.completed_at, "number");
+
+  await writeFile(
+    workQueuePath,
+    JSON.stringify([
+      {
+        harness: "playwright",
+        id: "queue-1",
+        name: "Ship board bridge",
+        owner_agent: "agent-9",
+        status: "failed",
+      },
+    ]),
+  );
+
+  const secondListResponse = await requestApp(server.app, { path: "/api/tasks" });
+  const secondTasks = secondListResponse.body?.tasks as Array<Record<string, unknown>>;
+  const updatedTask = secondTasks.find(
+    (task) => (task.metadata as Record<string, unknown>)?.work_queue_id === "queue-1",
+  );
+
+  assert.equal(secondListResponse.status, 200);
+  assert.equal(secondTasks.length, 2);
+  assert.equal(updatedTask?.id, syncedRunningTask?.id);
+  assert.equal(updatedTask?.status, "review");
+  assert.equal(updatedTask?.assignee_agent_id, "agent-9");
+  assert.match(String(updatedTask?.description), /Harness: playwright/);
+  assert.doesNotMatch(String(updatedTask?.description), /Loop Manager:/);
 });

@@ -72,6 +72,14 @@ export interface Agent {
   status: AgentStatus;
 }
 
+export interface AgentSession {
+  agentId: string | null;
+  currentActivity: string | null;
+  lastHeartbeat: number | null;
+  sessionKey: string | null;
+  [key: string]: unknown;
+}
+
 export interface AgentHierarchyNode {
   agent: Agent;
   children: AgentHierarchyNode[];

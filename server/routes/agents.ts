@@ -1,7 +1,8 @@
 import { Router } from "express";
 
-import { getConfig, listSessions } from "../gateway-client.js";
+import type { MissionControlDatabase } from "../db.js";
 import { getDatabase } from "../db.js";
+import { getConfig, listSessions } from "../gateway-client.js";
 
 const DEFAULT_CACHE_TTL_MS = 30_000;
 
@@ -48,10 +49,47 @@ type AgentsSnapshot = {
 
 type CreateAgentsRouterOptions = {
   cacheTtlMs?: number;
+  db?: MissionControlDatabase;
   getConfig?: () => Promise<unknown>;
   listSessions?: () => Promise<unknown>;
   now?: () => number;
 };
+
+type TaskSummaryRow = {
+  assignee_agent_id: string | null;
+  child_count: number;
+  completed_at: number | null;
+  completed_child_count: number;
+  created_at: number;
+  created_by: string | null;
+  description: string | null;
+  id: string;
+  metadata: string | null;
+  parent_task_id: string | null;
+  priority: string;
+  status: string;
+  title: string;
+  updated_at: number;
+};
+
+type ActivityRow = {
+  agent_id: string | null;
+  created_at: number;
+  id: string;
+  message: string;
+  metadata: string | null;
+  task_id: string | null;
+  type: string;
+};
+
+const TASK_SUMMARY_SELECT = `
+  SELECT
+    tasks.*,
+    COUNT(child_tasks.id) AS child_count,
+    COALESCE(SUM(CASE WHEN child_tasks.status = 'done' THEN 1 ELSE 0 END), 0) AS completed_child_count
+  FROM tasks
+  LEFT JOIN tasks AS child_tasks ON child_tasks.parent_task_id = tasks.id
+`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -417,6 +455,60 @@ function selectPrimarySession(sessions: NormalizedSession[]) {
   return primarySession;
 }
 
+function serializeTaskSummary(task: TaskSummaryRow) {
+  const { child_count, completed_child_count, metadata, ...taskRow } = task;
+  const childCount = Number(child_count);
+
+  return {
+    ...taskRow,
+    child_count: childCount,
+    completion_stats: {
+      completed: Number(completed_child_count),
+      total: childCount,
+    },
+    metadata: parseJson(metadata),
+  };
+}
+
+function serializeActivity(activity: ActivityRow) {
+  return {
+    ...activity,
+    metadata: parseJson(activity.metadata),
+  };
+}
+
+function listAgentTasks(db: MissionControlDatabase, agentId: string) {
+  return db
+    .prepare(
+      `${TASK_SUMMARY_SELECT}
+       WHERE tasks.assignee_agent_id = ?
+       GROUP BY tasks.id
+       ORDER BY
+         CASE tasks.status
+           WHEN 'in_progress' THEN 0
+           WHEN 'review' THEN 1
+           WHEN 'assigned' THEN 2
+           WHEN 'inbox' THEN 3
+           ELSE 4
+         END,
+         tasks.updated_at DESC,
+         tasks.created_at DESC,
+         tasks.id DESC`,
+    )
+    .all(agentId) as TaskSummaryRow[];
+}
+
+function listAgentActivities(db: MissionControlDatabase, agentId: string) {
+  return db
+    .prepare(
+      `SELECT * FROM activities
+       WHERE agent_id = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 25`,
+    )
+    .all(agentId) as ActivityRow[];
+}
+
 type AgentHierarchy = {
   childrenByAgent: Map<string, string[]>;
   parentByAgent: Map<string, string | null>;
@@ -453,7 +545,11 @@ function buildAgentHierarchy(agents: AgentConfig[]): AgentHierarchy {
   };
 }
 
-function buildSnapshot(configValue: unknown, sessionsValue: unknown) {
+function buildSnapshot(
+  configValue: unknown,
+  sessionsValue: unknown,
+  db: MissionControlDatabase,
+) {
   const agentConfigs = getAgentConfigs(configValue);
   const hierarchy = buildAgentHierarchy(agentConfigs);
   const sessions = getSessionList(sessionsValue)
@@ -474,7 +570,6 @@ function buildSnapshot(configValue: unknown, sessionsValue: unknown) {
   // Cross-reference local tasks DB to find current task per agent
   const activeTasksByAgent = new Map<string, { id: string; title: string; status: string }>();
   try {
-    const db = getDatabase();
     const activeTasks = db.prepare(
       `SELECT id, title, status, assignee_agent_id FROM tasks 
        WHERE status IN ('in_progress', 'assigned', 'review') 
@@ -533,12 +628,14 @@ function serializeSession(session: NormalizedSession) {
 
 export function createAgentsRouter({
   cacheTtlMs = DEFAULT_CACHE_TTL_MS,
+  db,
   getConfig: loadConfig = getConfig,
   listSessions: loadSessions = listSessions,
   now = Date.now,
 }: CreateAgentsRouterOptions = {}) {
   const router = Router();
   let snapshot: AgentsSnapshot | null = null;
+  const resolveDb = () => db ?? getDatabase();
 
   async function getSnapshot() {
     const currentTime = now();
@@ -548,7 +645,7 @@ export function createAgentsRouter({
     }
 
     const [configValue, sessionsValue] = await Promise.all([loadConfig(), loadSessions()]);
-    const nextSnapshot = buildSnapshot(configValue, sessionsValue);
+    const nextSnapshot = buildSnapshot(configValue, sessionsValue, resolveDb());
 
     snapshot = {
       ...nextSnapshot,
@@ -577,6 +674,32 @@ export function createAgentsRouter({
       response.json(sessions);
     } catch {
       response.status(502).json({ error: "Failed to load agent sessions." });
+    }
+  });
+
+  router.get("/:id/detail", async (request, response) => {
+    try {
+      const cachedSnapshot = await getSnapshot();
+      const agent = cachedSnapshot.agents.find((candidate) => candidate.id === request.params.id);
+
+      if (!agent) {
+        response.status(404).json({ error: "Agent not found." });
+        return;
+      }
+
+      const sessions = cachedSnapshot.sessions
+        .filter((session) => session.agentId === request.params.id)
+        .map(serializeSession);
+      const tasks = listAgentTasks(resolveDb(), request.params.id).map(serializeTaskSummary);
+      const activities = listAgentActivities(resolveDb(), request.params.id).map(serializeActivity);
+
+      response.json({
+        activities,
+        sessions,
+        tasks,
+      });
+    } catch {
+      response.status(502).json({ error: "Failed to load agent detail." });
     }
   });
 

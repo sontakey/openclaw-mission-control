@@ -277,22 +277,26 @@ If no `identity.emoji` is set, Mission Control generates a consistent emoji base
 
 ### Linux (systemd)
 
-The installer sets this up automatically, but if you need to do it manually:
+The installer renders [`deploy/systemd/mission-control.service`](deploy/systemd/mission-control.service) with your install path and installs it into `/etc/systemd/system/mission-control.service`.
+
+If you need to do it manually:
 
 ```bash
 sudo tee /etc/systemd/system/mission-control.service << EOF
 [Unit]
 Description=Mission Control — OpenClaw Agent Dashboard
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=$USER
 WorkingDirectory=/path/to/mission-control
-ExecStart=$(which node) dist/server/server/index.js
+Environment=NODE_ENV=production
+EnvironmentFile=/path/to/mission-control/.env
+ExecStart=$(which node) /path/to/mission-control/dist/server/server/index.js
 Restart=always
 RestartSec=5
-EnvironmentFile=/path/to/mission-control/.env
 
 [Install]
 WantedBy=multi-user.target

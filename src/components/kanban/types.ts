@@ -17,11 +17,13 @@ export type KanbanTask = {
   id: string;
   title: string;
   description?: string;
+  loopManager?: string;
   status?: "inbox" | "assigned" | "in_progress" | "review" | "done";
   parentTaskId?: string;
   priority: "low" | "medium" | "high";
   assignee?: string;
   subtasks: KanbanSubtask[];
+  tmuxSession?: string;
   documentCount?: number;
 };
 

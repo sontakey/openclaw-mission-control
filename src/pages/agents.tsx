@@ -1,5 +1,6 @@
 import React from "react";
 
+import { AgentDetailDrawer } from "@/components/agents/agent-detail-drawer";
 import { AgentGrid, AgentTree } from "@/components/agents/agent-tree";
 import { PageHeader } from "@/components/layout/page-header/page-header";
 import { PageHeaderActions } from "@/components/layout/page-header/page-header-actions";
@@ -17,27 +18,58 @@ export const DEFAULT_AGENT_VIEW_MODE: AgentViewMode = "tree";
 
 const AgentsPage = () => {
   const { agents, isLoading, status } = useAgents();
+  const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
+
+  const selectedAgent = React.useMemo(
+    () => agents.find((agent) => agent.id === selectedAgentId) ?? null,
+    [agents, selectedAgentId],
+  );
+
+  React.useEffect(() => {
+    if (selectedAgentId && !selectedAgent) {
+      setSelectedAgentId(null);
+    }
+  }, [selectedAgent, selectedAgentId]);
 
   return (
-    <AgentsPageContent agents={agents} isLoading={isLoading} status={status} />
+    <AgentsPageContent
+      agents={agents}
+      detailDrawer={
+        <AgentDetailDrawer
+          agent={selectedAgent}
+          onClose={() => setSelectedAgentId(null)}
+          open={selectedAgent !== null}
+        />
+      }
+      isLoading={isLoading}
+      onAgentSelect={(agent) => setSelectedAgentId(agent.id)}
+      selectedAgentId={selectedAgentId}
+      status={status}
+    />
   );
 };
 
 export const AgentsPageContent = ({
   agents,
+  detailDrawer,
   initialViewMode = DEFAULT_AGENT_VIEW_MODE,
   isLoading,
+  onAgentSelect,
+  selectedAgentId = null,
   status,
 }: {
   agents: Agent[];
+  detailDrawer?: React.ReactNode;
   initialViewMode?: AgentViewMode;
   isLoading: boolean;
+  onAgentSelect?: (agent: Agent) => void;
+  selectedAgentId?: string | null;
   status: AgentsStatus;
 }) => {
   const [viewMode, setViewMode] = React.useState<AgentViewMode>(initialViewMode);
 
   return (
-    <>
+    <div className="relative min-h-[calc(100vh-10rem)]">
       <PageHeader>
         <PageHeaderRow>
           <PageHeaderTitle>Squad</PageHeaderTitle>
@@ -92,15 +124,24 @@ export const AgentsPageContent = ({
           ) : (
             <div data-view-mode={viewMode}>
               {viewMode === "tree" ? (
-                <AgentTree agents={agents} />
+                <AgentTree
+                  agents={agents}
+                  onSelectAgent={onAgentSelect}
+                  selectedAgentId={selectedAgentId}
+                />
               ) : (
-                <AgentGrid agents={agents} />
+                <AgentGrid
+                  agents={agents}
+                  onSelectAgent={onAgentSelect}
+                  selectedAgentId={selectedAgentId}
+                />
               )}
             </div>
           )}
         </section>
       </div>
-    </>
+      {detailDrawer}
+    </div>
   );
 };
 

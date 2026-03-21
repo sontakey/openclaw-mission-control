@@ -1,6 +1,6 @@
 import * as React from "react";
 // @ts-expect-error lucide-react type export mismatch (works at runtime)
-import { Bot, Settings, SquareKanban } from "lucide-react";
+import { Bot, Clock3, MessageSquare, Settings, SquareKanban } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import { NavMain, type NavItem } from "./nav-main";
@@ -23,6 +23,16 @@ const navItems: NavItem[] = [
     title: "Agents",
     url: "/agents",
     icon: Bot,
+  },
+  {
+    title: "Chat",
+    url: "/chat",
+    icon: MessageSquare,
+  },
+  {
+    title: "Crons",
+    url: "/crons",
+    icon: Clock3,
   },
   {
     title: "Settings",

@@ -10,6 +10,10 @@ PORT="${MISSION_CONTROL_PORT:-3100}"
 GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://127.0.0.1:18789}"
 SERVICE_NAME="mission-control"
 
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[&|]/\\&/g'
+}
+
 echo "🎛️  Mission Control — OpenClaw Agent Dashboard"
 echo ""
 
@@ -69,26 +73,25 @@ EOF
 # Systemd service (Linux only)
 if command -v systemctl &>/dev/null; then
   echo "▸ Setting up systemd service..."
-  NODE_BIN=$(which node)
-  USER_NAME=$(whoami)
+  NODE_BIN=$(command -v node)
+  USER_NAME="${SUDO_USER:-$(id -un)}"
+  SERVICE_TEMPLATE="$INSTALL_DIR/deploy/systemd/$SERVICE_NAME.service"
+  SERVICE_TARGET="/etc/systemd/system/$SERVICE_NAME.service"
+  TEMP_SERVICE_FILE=$(mktemp)
 
-  sudo tee /etc/systemd/system/$SERVICE_NAME.service >/dev/null <<SVCEOF
-[Unit]
-Description=Mission Control — OpenClaw Agent Dashboard
-After=network.target
+  if [ ! -f "$SERVICE_TEMPLATE" ]; then
+    echo "❌ Missing service template: $SERVICE_TEMPLATE"
+    exit 1
+  fi
 
-[Service]
-Type=simple
-User=$USER_NAME
-WorkingDirectory=$INSTALL_DIR
-ExecStart=$NODE_BIN dist/server/server/index.js
-Restart=always
-RestartSec=5
-EnvironmentFile=$INSTALL_DIR/.env
+  sed \
+    -e "s|__MISSION_CONTROL_USER__|$(escape_sed_replacement "$USER_NAME")|g" \
+    -e "s|__MISSION_CONTROL_DIR__|$(escape_sed_replacement "$INSTALL_DIR")|g" \
+    -e "s|__NODE_BIN__|$(escape_sed_replacement "$NODE_BIN")|g" \
+    "$SERVICE_TEMPLATE" > "$TEMP_SERVICE_FILE"
 
-[Install]
-WantedBy=multi-user.target
-SVCEOF
+  sudo install -m 0644 "$TEMP_SERVICE_FILE" "$SERVICE_TARGET"
+  rm -f "$TEMP_SERVICE_FILE"
 
   sudo systemctl daemon-reload
   sudo systemctl enable --now $SERVICE_NAME

@@ -1,0 +1,17 @@
+[Unit]
+Description=Mission Control - OpenClaw Agent Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__MISSION_CONTROL_USER__
+WorkingDirectory=__MISSION_CONTROL_DIR__
+Environment=NODE_ENV=production
+EnvironmentFile=__MISSION_CONTROL_DIR__/.env
+ExecStart=__NODE_BIN__ __MISSION_CONTROL_DIR__/dist/server/server/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

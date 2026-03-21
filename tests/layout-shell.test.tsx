@@ -17,6 +17,8 @@ test("app shell renders Mission Control sidebar navigation on board", () => {
   assert.match(html, /Mission Control/);
   assert.match(html, />Board</);
   assert.match(html, />Agents</);
+  assert.match(html, /href="\/chat"/);
+  assert.match(html, />Crons</);
   assert.match(html, />Settings</);
   assert.match(html, /Chat/);
   assert.match(html, /Review incoming work, track delivery, and keep the live activity stream close\./);
@@ -38,14 +40,66 @@ test("settings route keeps the top-level sidebar navigation", () => {
   assert.match(html, /Mission Control/);
   assert.match(html, />Board</);
   assert.match(html, />Agents</);
+  assert.match(html, /href="\/chat"/);
+  assert.match(html, />Crons</);
   assert.match(html, />Settings</);
   assert.match(html, /Gateway connection/);
-  assert.match(html, /Cron jobs/);
   assert.match(html, /Use light theme/);
   assert.match(
     html,
-    /Gateway connection details, scheduled jobs, and client theme controls\./,
+    /Gateway connection details and client theme controls\./,
   );
   assert.match(html, /Loading gateway config\.\.\./);
+});
+
+test("agents route keeps the top-level sidebar navigation", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter initialEntries={["/agents"]}>
+      <AppShell />
+    </MemoryRouter>,
+  );
+
+  assert.match(html, /Mission Control/);
+  assert.match(html, />Board</);
+  assert.match(html, />Agents</);
+  assert.match(html, /href="\/chat"/);
+  assert.match(html, />Crons</);
+  assert.match(html, />Settings</);
+  assert.match(html, /Squad/);
+  assert.match(html, /Your AI agents and their current status\./);
+});
+
+test("chat route renders a dedicated chat page inside the shared shell", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter initialEntries={["/chat"]}>
+      <AppShell />
+    </MemoryRouter>,
+  );
+
+  assert.match(html, /Mission Control/);
+  assert.match(html, />Board</);
+  assert.match(html, />Agents</);
+  assert.match(html, /href="\/chat"/);
+  assert.match(html, />Crons</);
+  assert.match(html, />Settings</);
+  assert.match(html, />Chat</);
+  assert.match(html, /Message agent sessions without leaving Mission Control\./);
+  assert.match(html, /Start a conversation/);
+});
+
+test("crons route renders dedicated cron jobs page inside the shell", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter initialEntries={["/crons"]}>
+      <AppShell />
+    </MemoryRouter>,
+  );
+
+  assert.match(html, /Mission Control/);
+  assert.match(html, />Board</);
+  assert.match(html, />Agents</);
+  assert.match(html, />Crons</);
+  assert.match(html, />Settings</);
+  assert.match(html, /Cron Jobs/);
+  assert.match(html, /Gateway cron jobs/);
   assert.match(html, /Loading cron jobs\.\.\./);
 });

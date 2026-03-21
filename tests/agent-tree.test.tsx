@@ -77,6 +77,11 @@ test("organizeAgents builds hierarchy roots and separates standalone agents", ()
 test("AgentTree renders hierarchy cards, current task copy, and standalone agents", () => {
   const root = createAgent({
     children: ["child"],
+    currentTask: {
+      id: "task-1",
+      status: "review",
+      title: "Audit launch checklist",
+    },
     delegatesTo: ["child"],
     id: "root",
     name: "Ralph",
@@ -108,7 +113,8 @@ test("AgentTree renders hierarchy cards, current task copy, and standalone agent
   assert.match(html, /Penny/);
   assert.match(html, /Marv/);
   assert.match(html, /Current task/);
-  assert.match(html, /No task assigned/);
+  assert.match(html, /Audit launch checklist/);
+  assert.match(html, /No task/);
   assert.match(html, /Click for details/);
   assert.match(html, /Individual contributor/);
 });

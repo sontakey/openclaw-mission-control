@@ -36,6 +36,35 @@ const BOARD_COLUMN_CONFIG: Array<{
   { id: "done", title: "Done", variant: "done" },
 ];
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getRecordString(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function getTaskRuntimeDetails(task: Pick<TaskRecord, "metadata">) {
+  const metadata = isRecord(task.metadata) ? task.metadata : null;
+  const workQueue = isRecord(metadata?.work_queue) ? metadata.work_queue : null;
+
+  return {
+    loopManager:
+      getRecordString(workQueue, "loop_manager") ??
+      getRecordString(metadata, "loop_manager"),
+    tmuxSession:
+      getRecordString(workQueue, "tmux_session") ??
+      getRecordString(metadata, "tmux_session"),
+  };
+}
+
 export function mapTaskPriority(priority: TaskPriority): KanbanTask["priority"] {
   switch (priority) {
     case "high":
@@ -49,24 +78,31 @@ export function mapTaskPriority(priority: TaskPriority): KanbanTask["priority"] 
 }
 
 function mapTaskRecordToKanbanTask(task: TaskRecord): KanbanTask {
+  const runtime = getTaskRuntimeDetails(task);
+
   return {
     assignee: task.assignee_agent_id ?? undefined,
     description: task.description ?? undefined,
     id: task.id,
+    loopManager: runtime.loopManager,
     parentTaskId: task.parent_task_id ?? undefined,
     priority: mapTaskPriority(task.priority),
     status: task.status,
     subtasks: [],
     title: task.title,
+    tmuxSession: runtime.tmuxSession,
   };
 }
 
 export function mapTaskToKanbanTask(task: Task): KanbanTask {
+  const runtime = getTaskRuntimeDetails(task);
+
   return {
     assignee: task.assignee_agent_id ?? undefined,
     childTasks: task.children?.map(mapTaskRecordToKanbanTask),
     description: task.description ?? undefined,
     id: task.id,
+    loopManager: runtime.loopManager,
     parentTaskId: task.parent_task_id ?? undefined,
     priority: mapTaskPriority(task.priority),
     status: task.status,
@@ -81,6 +117,7 @@ export function mapTaskToKanbanTask(task: Task): KanbanTask {
       title: subtask.title,
     })),
     title: task.title,
+    tmuxSession: runtime.tmuxSession,
   };
 }
 

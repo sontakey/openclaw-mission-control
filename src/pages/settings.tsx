@@ -29,50 +29,15 @@ type GatewayConfigResponse = {
   connection: GatewayConnection;
 };
 
-type GatewayCron = {
-  id: string;
-  isActive: boolean | null;
-  lastRunAt: number | null;
-  name: string;
-  nextRunAt: number | null;
-  schedule: string;
-};
-
-type GatewayCronsResponse = {
-  crons: GatewayCron[];
-};
-
 type SettingsState = {
   config: unknown;
   connection: GatewayConnection | null;
   connectionError: string | null;
-  crons: GatewayCron[];
-  cronsError: string | null;
   isLoading: boolean;
 };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
-}
-
-function formatTimestamp(value: number | null) {
-  if (value === null) {
-    return "Not scheduled";
-  }
-
-  return new Date(value).toLocaleString();
-}
-
-function getCronStatusLabel(isActive: boolean | null) {
-  if (isActive === true) {
-    return "Enabled";
-  }
-
-  if (isActive === false) {
-    return "Paused";
-  }
-
-  return "Unknown";
 }
 
 function getNestedValue(obj: unknown, path: string[]): unknown {
@@ -166,8 +131,6 @@ const SettingsPage = () => {
     config: null,
     connection: null,
     connectionError: null,
-    crons: [],
-    cronsError: null,
     isLoading: true,
   });
 
@@ -178,33 +141,34 @@ const SettingsPage = () => {
       setState((currentState) => ({
         ...currentState,
         connectionError: null,
-        cronsError: null,
         isLoading: true,
       }));
 
-      const [configResult, cronsResult] = await Promise.allSettled([
-        apiGet<GatewayConfigResponse>("/api/gateway/config"),
-        apiGet<GatewayCronsResponse>("/api/gateway/crons"),
-      ]);
+      try {
+        const config = await apiGet<GatewayConfigResponse>("/api/gateway/config");
 
-      if (!isCurrent) {
-        return;
+        if (!isCurrent) {
+          return;
+        }
+
+        setState({
+          config: config?.config ?? null,
+          connection: config?.connection ?? null,
+          connectionError: null,
+          isLoading: false,
+        });
+      } catch (error) {
+        if (!isCurrent) {
+          return;
+        }
+
+        setState({
+          config: null,
+          connection: null,
+          connectionError: getErrorMessage(error),
+          isLoading: false,
+        });
       }
-
-      setState({
-        config:
-          configResult.status === "fulfilled" ? (configResult.value?.config ?? null) : null,
-        connection:
-          configResult.status === "fulfilled"
-            ? (configResult.value?.connection ?? null)
-            : null,
-        connectionError:
-          configResult.status === "rejected" ? getErrorMessage(configResult.reason) : null,
-        crons: cronsResult.status === "fulfilled" ? (cronsResult.value?.crons ?? []) : [],
-        cronsError:
-          cronsResult.status === "rejected" ? getErrorMessage(cronsResult.reason) : null,
-        isLoading: false,
-      });
     }
 
     void loadSettings();
@@ -230,7 +194,7 @@ const SettingsPage = () => {
 
       <div className="space-y-6">
         <p className="text-muted-foreground text-sm">
-          Gateway connection details, scheduled jobs, and client theme controls.
+          Gateway connection details and client theme controls.
         </p>
 
         <Card>
@@ -272,53 +236,6 @@ const SettingsPage = () => {
               <p className="text-muted-foreground text-sm">
                 No gateway config returned.
               </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Cron jobs</CardTitle>
-            <CardDescription>
-              Scheduled gateway jobs returned by <code>/api/gateway/crons</code>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {state.isLoading && state.crons.length === 0 && !state.cronsError ? (
-              <p className="text-muted-foreground text-sm">Loading cron jobs...</p>
-            ) : state.cronsError ? (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {state.cronsError}
-              </p>
-            ) : state.crons.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No cron jobs configured.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead className="text-muted-foreground border-b">
-                    <tr>
-                      <th className="py-2 pr-4 font-medium">Name</th>
-                      <th className="py-2 pr-4 font-medium">Schedule</th>
-                      <th className="py-2 pr-4 font-medium">Status</th>
-                      <th className="py-2 pr-4 font-medium">Next run</th>
-                      <th className="py-2 font-medium">Last run</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.crons.map((cron) => (
-                      <tr key={cron.id} className="border-b last:border-b-0">
-                        <td className="py-3 pr-4">{cron.name}</td>
-                        <td className="py-3 pr-4 font-mono text-xs">{cron.schedule}</td>
-                        <td className="py-3 pr-4">{getCronStatusLabel(cron.isActive)}</td>
-                        <td className="py-3 pr-4">{formatTimestamp(cron.nextRunAt)}</td>
-                        <td className="py-3">{formatTimestamp(cron.lastRunAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             )}
           </CardContent>
         </Card>

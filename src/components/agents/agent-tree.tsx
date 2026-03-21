@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 export type AgentTreeProps = {
   agents: Agent[];
   className?: string;
+  onSelectAgent?: (agent: Agent) => void;
+  selectedAgentId?: string | null;
 };
 
 export type AgentTreeNode = {
@@ -155,7 +157,12 @@ function getDirectReportCounts(agents: Agent[]) {
   return directReportCounts;
 }
 
-export const AgentTree = ({ agents, className }: AgentTreeProps) => {
+export const AgentTree = ({
+  agents,
+  className,
+  onSelectAgent,
+  selectedAgentId = null,
+}: AgentTreeProps) => {
   const { roots, standalone } = organizeAgents(agents);
 
   return (
@@ -172,7 +179,12 @@ export const AgentTree = ({ agents, className }: AgentTreeProps) => {
           <div className="overflow-x-auto pb-2">
             <div className="inline-flex min-w-full flex-col gap-10 px-4">
               {roots.map((root) => (
-                <AgentBranch key={root.agent.id} node={root} />
+                <AgentBranch
+                  key={root.agent.id}
+                  node={root}
+                  onSelectAgent={onSelectAgent}
+                  selectedAgentId={selectedAgentId}
+                />
               ))}
             </div>
           </div>
@@ -192,7 +204,12 @@ export const AgentTree = ({ agents, className }: AgentTreeProps) => {
 
           <div className="flex flex-wrap gap-4">
             {standalone.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} />
+              <AgentCard
+                key={agent.id}
+                agent={agent}
+                onSelectAgent={onSelectAgent}
+                selected={selectedAgentId === agent.id}
+              />
             ))}
           </div>
         </section>
@@ -201,7 +218,12 @@ export const AgentTree = ({ agents, className }: AgentTreeProps) => {
   );
 };
 
-export const AgentGrid = ({ agents, className }: AgentTreeProps) => {
+export const AgentGrid = ({
+  agents,
+  className,
+  onSelectAgent,
+  selectedAgentId = null,
+}: AgentTreeProps) => {
   const directReportCounts = getDirectReportCounts(agents);
 
   return (
@@ -211,18 +233,33 @@ export const AgentGrid = ({ agents, className }: AgentTreeProps) => {
           key={agent.id}
           agent={agent}
           childCount={directReportCounts.get(agent.id) ?? 0}
+          onSelectAgent={onSelectAgent}
+          selected={selectedAgentId === agent.id}
         />
       ))}
     </div>
   );
 };
 
-const AgentBranch = ({ node }: { node: AgentTreeNode }) => {
+const AgentBranch = ({
+  node,
+  onSelectAgent,
+  selectedAgentId,
+}: {
+  node: AgentTreeNode;
+  onSelectAgent?: (agent: Agent) => void;
+  selectedAgentId: string | null;
+}) => {
   const hasChildren = node.children.length > 0;
 
   return (
     <div className="flex flex-col items-center">
-      <AgentCard agent={node.agent} childCount={node.children.length} />
+      <AgentCard
+        agent={node.agent}
+        childCount={node.children.length}
+        onSelectAgent={onSelectAgent}
+        selected={selectedAgentId === node.agent.id}
+      />
 
       {hasChildren ? (
         <>
@@ -245,7 +282,11 @@ const AgentBranch = ({ node }: { node: AgentTreeNode }) => {
                   aria-hidden="true"
                   className="bg-border absolute top-0 left-1/2 h-6 w-px -translate-x-1/2"
                 />
-                <AgentBranch node={child} />
+                <AgentBranch
+                  node={child}
+                  onSelectAgent={onSelectAgent}
+                  selectedAgentId={selectedAgentId}
+                />
               </div>
             ))}
           </div>
@@ -258,9 +299,13 @@ const AgentBranch = ({ node }: { node: AgentTreeNode }) => {
 export const AgentCard = ({
   agent,
   childCount = 0,
+  onSelectAgent,
+  selected = false,
 }: {
   agent: Agent;
   childCount?: number;
+  onSelectAgent?: (agent: Agent) => void;
+  selected?: boolean;
 }) => {
   const status = deriveStatus({
     lastHeartbeat: agent.lastHeartbeat ?? undefined,
@@ -268,81 +313,85 @@ export const AgentCard = ({
   });
   const config = statusConfig[status];
   const task = agent.currentTask;
-  const taskSummary = task ? task.title : (agent.currentActivity?.trim() || null);
-
-  return (
-    <details className="w-[18rem] rounded-2xl [&_summary::-webkit-details-marker]:hidden">
-      <summary className="list-none">
-        <div className="bg-card text-card-foreground flex min-h-48 flex-col rounded-2xl border border-border/70 bg-gradient-to-b from-card via-card to-muted/40 p-4 shadow-sm transition hover:border-brand/40 hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <span className="text-3xl leading-none">{agent.emoji}</span>
-            <Badge
-              variant={config.variant}
-              className={cn("gap-1.5", config.tone)}
-            >
-              <span
-                aria-hidden="true"
-                className={cn("h-1.5 w-1.5 rounded-full", config.dotColor)}
-              />
-              {config.label}
-            </Badge>
-          </div>
-
-          <div className="mt-4 space-y-1">
-            <h3 className="text-base font-semibold tracking-tight">{agent.name}</h3>
-            <p className="text-muted-foreground text-sm">{agent.role}</p>
-          </div>
-
-          <div className="mt-5 space-y-2">
-            {task ? (
-              <>
-                <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.2em]">
-                  Current task
-                </p>
-                <div className="mt-0.5">
-                  <span className={cn(
-                    "inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase mr-1.5",
-                    task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
-                    task.status === "review" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
-                    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                  )}>
-                    {task.status.replace("_", " ")}
-                  </span>
-                  <p className="text-sm mt-1 line-clamp-2">{task.title}</p>
-                </div>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-sm italic">No task</p>
-            )}
-          </div>
-
-          <div className="text-muted-foreground mt-auto flex items-center justify-between pt-5 text-xs">
-            <span>{childCount > 0 ? `${childCount} report${childCount === 1 ? "" : "s"}` : "Individual contributor"}</span>
-            <span>Click for details</span>
-          </div>
-        </div>
-      </summary>
-
-      <div className="bg-muted/50 mt-3 space-y-3 rounded-2xl border border-dashed p-4 text-sm">
-        <DetailRow label="Session" value={agent.sessionKey ?? "Unavailable"} />
-        <DetailRow
-          label="Delegates"
-          value={agent.delegatesTo.length > 0 ? String(agent.delegatesTo.length) : "None"}
-        />
-        <DetailRow
-          label="Last seen"
-          value={formatLastSeen(agent.lastHeartbeat)}
-        />
+  const cardContent = (
+    <div
+      className={cn(
+        "bg-card text-card-foreground flex min-h-48 w-[18rem] flex-col rounded-2xl border border-border/70 bg-gradient-to-b from-card via-card to-muted/40 p-4 text-left shadow-sm transition",
+        onSelectAgent
+          ? "hover:border-brand/40 hover:shadow-md"
+          : "",
+        selected ? "ring-brand/20 border-brand/40 ring-4" : "",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-3xl leading-none">{agent.emoji}</span>
+        <Badge
+          variant={config.variant}
+          className={cn("gap-1.5", config.tone)}
+        >
+          <span
+            aria-hidden="true"
+            className={cn("h-1.5 w-1.5 rounded-full", config.dotColor)}
+          />
+          {config.label}
+        </Badge>
       </div>
-    </details>
-  );
-};
 
-const DetailRow = ({ label, value }: { label: string; value: string }) => {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="max-w-[10rem] truncate text-right font-medium">{value}</span>
+      <div className="mt-4 space-y-1">
+        <h3 className="text-base font-semibold tracking-tight">{agent.name}</h3>
+        <p className="text-muted-foreground text-sm">{agent.role}</p>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        {task ? (
+          <>
+            <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.2em]">
+              Current task
+            </p>
+            <div className="mt-0.5">
+              <span
+                className={cn(
+                  "mr-1.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                  task.status === "in_progress"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : task.status === "review"
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+                )}
+              >
+                {task.status.replace("_", " ")}
+              </span>
+              <p className="mt-1 line-clamp-2 text-sm">{task.title}</p>
+            </div>
+          </>
+        ) : (
+          <p className="text-muted-foreground text-sm italic">No task</p>
+        )}
+      </div>
+
+      <div className="text-muted-foreground mt-auto flex items-center justify-between pt-5 text-xs">
+        <span>
+          {childCount > 0
+            ? `${childCount} report${childCount === 1 ? "" : "s"}`
+            : "Individual contributor"}
+        </span>
+        <span>Click for details</span>
+      </div>
     </div>
+  );
+
+  if (!onSelectAgent) {
+    return cardContent;
+  }
+
+  return (
+    <button
+      aria-label={`Open details for ${agent.name}`}
+      className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+      onClick={() => onSelectAgent(agent)}
+      type="button"
+    >
+      {cardContent}
+    </button>
   );
 };

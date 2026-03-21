@@ -1,12 +1,14 @@
 import React from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import { ChatPanel } from "@/components/layout/chat-panel";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { SidebarToggle } from "@/components/layout/sidebar-toggle";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import BoardPage from "@/pages/board";
+import CronsPage from "@/pages/crons";
 import AgentsPage from "@/pages/agents";
+import ChatPage from "@/pages/chat";
 import SettingsPage from "@/pages/settings";
 import { ChatPanelProvider } from "@/providers/chat-panel-provider";
 import { DrawerProvider } from "@/providers/drawer-provider";
@@ -14,6 +16,9 @@ import { SquadProvider } from "@/providers/squad-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 
 function AppLayout() {
+  const { pathname } = useLocation();
+  const showChatPanel = !pathname.startsWith("/chat");
+
   return (
     <SidebarProvider>
       <DashboardSidebar />
@@ -28,10 +33,12 @@ function AppLayout() {
                 <Route path="/" element={<BoardPage />} />
                 <Route path="/board" element={<BoardPage />} />
                 <Route path="/agents" element={<AgentsPage />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/crons" element={<CronsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </main>
-            <ChatPanel />
+            {showChatPanel ? <ChatPanel /> : null}
           </div>
         </div>
       </SidebarInset>

@@ -5,6 +5,8 @@ import type { MissionControlDatabase } from "../db.js";
 import { getDatabase } from "../db.js";
 import { sse } from "../sse.js";
 import type { SseEventMap } from "../sse.js";
+import { captureTmuxOutput as captureTaskTmuxOutput, DEFAULT_TMUX_CAPTURE_LINES } from "../tmux.js";
+import { syncWorkQueueToTasks } from "../work-queue.js";
 
 const TASK_STATUSES = new Set(["inbox", "assigned", "in_progress", "review", "done"]);
 const TASK_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
@@ -85,7 +87,9 @@ export type TaskSseBroadcaster = {
 
 type CreateTasksRouterOptions = {
   broadcaster?: TaskSseBroadcaster;
+  captureTmuxOutput?: (session: string, lines: number) => Promise<string>;
   db?: MissionControlDatabase;
+  workQueuePath?: string | null;
 };
 
 function getSingleValue(value: unknown) {
@@ -160,6 +164,10 @@ function getOptionalQueryBoolean(value: unknown) {
   return null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function parseJson(value: string | null) {
   if (!value) {
     return null;
@@ -170,6 +178,43 @@ function parseJson(value: string | null) {
   } catch {
     return value;
   }
+}
+
+function getMetadataRecord(value: string | null) {
+  const parsed = parseJson(value);
+  return isRecord(parsed) ? parsed : null;
+}
+
+function getRecordString(record: Record<string, unknown> | null, keys: string[]) {
+  if (!record) {
+    return null;
+  }
+
+  for (const key of keys) {
+    const value = record[key];
+
+    if (typeof value !== "string") {
+      continue;
+    }
+
+    const trimmed = value.trim();
+
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+function getTaskTmuxSession(task: TaskRow) {
+  const metadata = getMetadataRecord(task.metadata);
+  const workQueue = isRecord(metadata?.work_queue) ? metadata.work_queue : null;
+
+  return (
+    getRecordString(workQueue, ["tmux_session", "tmuxSession"]) ??
+    getRecordString(metadata, ["tmux_session", "tmuxSession"])
+  );
 }
 
 function serializeTask(task: TaskRow) {
@@ -382,11 +427,15 @@ function emitMutation(
 export function createTasksRouter({
   db,
   broadcaster = sse,
+  captureTmuxOutput = captureTaskTmuxOutput,
+  workQueuePath,
 }: CreateTasksRouterOptions = {}) {
   const router = Router();
   const resolveDb = () => db ?? getDatabase();
 
   router.get("/", (request, response) => {
+    syncWorkQueueToTasks(resolveDb(), { workQueuePath });
+
     const status = getTrimmedString(getSingleValue(request.query.status));
     const assignee = getTrimmedString(getSingleValue(request.query.assignee));
     const parentId = getTrimmedString(getSingleValue(request.query.parent_id));
@@ -421,6 +470,39 @@ export function createTasksRouter({
     }
 
     response.json({ task });
+  });
+
+  router.get("/:id/tmux-output", async (request, response) => {
+    syncWorkQueueToTasks(resolveDb(), { workQueuePath });
+
+    const task = getTaskById(resolveDb(), request.params.id);
+
+    if (!task) {
+      sendNotFound(response);
+      return;
+    }
+
+    const session = getTaskTmuxSession(task);
+
+    if (!session) {
+      response.status(404).json({ error: "Task has no tmux session." });
+      return;
+    }
+
+    try {
+      const output = await captureTmuxOutput(session, DEFAULT_TMUX_CAPTURE_LINES);
+
+      response.json({
+        capturedAt: Date.now(),
+        output,
+        session,
+      });
+    } catch {
+      response.status(502).json({
+        error: "Failed to capture tmux output.",
+        session,
+      });
+    }
   });
 
   router.post("/", (request, response) => {

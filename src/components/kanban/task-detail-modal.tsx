@@ -19,6 +19,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import { useTaskTmuxOutput } from "@/hooks/useTaskTmuxOutput";
+
 import type { KanbanTask } from "./types";
 import {
   approveKanbanTask,
@@ -62,6 +64,69 @@ export type TaskDetailModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+export type TaskTmuxOutputPanelProps = {
+  capturedAt?: number | null;
+  error?: string | null;
+  isLoading?: boolean;
+  loopManager?: string;
+  output?: string | null;
+  session: string;
+  status?: KanbanTask["status"];
+};
+
+export function TaskTmuxOutputPanel({
+  capturedAt = null,
+  error = null,
+  isLoading = false,
+  loopManager,
+  output = null,
+  session,
+  status,
+}: TaskTmuxOutputPanelProps) {
+  const isRunningLoop = status === "in_progress";
+
+  return (
+    <div>
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            {isRunningLoop ? "Live tmux output" : "Tmux output"}
+          </h4>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {loopManager ? `${loopManager} loop` : "Session"} · {session}
+          </p>
+        </div>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          {capturedAt
+            ? `Updated ${timeAgo(capturedAt)}`
+            : isLoading
+              ? "Connecting"
+              : "Waiting"}
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-inner">
+        {error ? (
+          <div className="px-4 py-3 text-xs text-red-300">{error}</div>
+        ) : output ? (
+          <pre className="max-h-72 overflow-auto px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-100">
+            {output}
+          </pre>
+        ) : (
+          <div className="flex items-center gap-2 px-4 py-3 text-xs text-slate-400">
+            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            <span>
+              {isLoading
+                ? "Connecting to tmux session..."
+                : "No tmux output captured yet."}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export const TaskDetailModal = ({
   task,
   open,
@@ -75,6 +140,14 @@ export const TaskDetailModal = ({
 
   if (!task) return null;
 
+  const {
+    data: tmuxOutput,
+    error: tmuxOutputError,
+    isLoading: isTmuxOutputLoading,
+  } = useTaskTmuxOutput({
+    enabled: open && Boolean(task.tmuxSession),
+    taskId: task.id,
+  });
   const priority = priorityConfig[task.priority];
   const hasSubtasks = task.subtasks.length > 0;
   const isReview = task.status === "review";
@@ -166,6 +239,18 @@ export const TaskDetailModal = ({
                 )}
               </div>
             )}
+
+            {task.tmuxSession ? (
+              <TaskTmuxOutputPanel
+                capturedAt={tmuxOutput?.capturedAt}
+                error={tmuxOutputError?.message}
+                isLoading={isTmuxOutputLoading}
+                loopManager={task.loopManager}
+                output={tmuxOutput?.output}
+                session={task.tmuxSession}
+                status={task.status}
+              />
+            ) : null}
 
             {/* Subtasks */}
             {hasSubtasks && (

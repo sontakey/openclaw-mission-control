@@ -74,12 +74,12 @@ test("agents ui uses local agent fields and removes the weekly routine grid", as
   );
   assert.match(
     tree,
-    /currentActivity/,
-    "agent tree should render currentActivity instead of currentTask",
+    /currentActivity|currentTask/,
+    "agent tree should render agent activity or task details",
   );
   assert.doesNotMatch(
     tree,
-    /agent\._id|currentTask|WeeklyRoutineGrid|weekly-routine-grid/,
+    /agent\._id|WeeklyRoutineGrid|weekly-routine-grid/,
     "agent tree still references removed Convex fields or weekly routine grid",
   );
 
