@@ -21,7 +21,7 @@ import {
 } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/hooks/useTasks";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import type { Task, TaskPriority, TaskRecord, TaskStatus } from "@/lib/types";
 import { useDrawer } from "@/providers/drawer-provider";
 
 const BOARD_COLUMN_CONFIG: Array<{
@@ -48,9 +48,23 @@ export function mapTaskPriority(priority: TaskPriority): KanbanTask["priority"] 
   }
 }
 
+function mapTaskRecordToKanbanTask(task: TaskRecord): KanbanTask {
+  return {
+    assignee: task.assignee_agent_id ?? undefined,
+    description: task.description ?? undefined,
+    id: task.id,
+    parentTaskId: task.parent_task_id ?? undefined,
+    priority: mapTaskPriority(task.priority),
+    status: task.status,
+    subtasks: [],
+    title: task.title,
+  };
+}
+
 export function mapTaskToKanbanTask(task: Task): KanbanTask {
   return {
     assignee: task.assignee_agent_id ?? undefined,
+    childTasks: task.children?.map(mapTaskRecordToKanbanTask),
     description: task.description ?? undefined,
     id: task.id,
     parentTaskId: task.parent_task_id ?? undefined,
@@ -91,10 +105,10 @@ export function buildBoardColumns(tasks: Task[]): KanbanColumnDef[] {
 }
 
 const BoardPage = () => {
-  const { error, isLoading, tasks } = useTasks();
+  const { boardTasks, error, isLoading, tasks } = useTasks();
   const { openDrawer } = useDrawer();
 
-  const columns = React.useMemo(() => buildBoardColumns(tasks), [tasks]);
+  const columns = React.useMemo(() => buildBoardColumns(boardTasks), [boardTasks]);
   const planOptions = React.useMemo(() => getNewTaskDialogPlanOptions(tasks), [tasks]);
 
   const handleOpenFeed = React.useCallback(() => {
@@ -133,9 +147,9 @@ const BoardPage = () => {
             <p className="text-muted-foreground">
               {isLoading && tasks.length === 0
                 ? "Loading tasks..."
-                : tasks.length === 0
+                : boardTasks.length === 0
                   ? "No tasks yet. Create one to populate the board."
-                  : `${tasks.length} task${tasks.length === 1 ? "" : "s"} on the board.`}
+                  : `${boardTasks.length} task${boardTasks.length === 1 ? "" : "s"} on the board.`}
             </p>
           </div>
 

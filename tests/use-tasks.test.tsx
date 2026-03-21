@@ -5,6 +5,7 @@ import {
   TasksStore,
   createTasksApi,
   fetchTasks,
+  groupTasksByParent,
   type TasksApi,
 } from "../src/hooks/useTasks.ts";
 import type { Task, TaskRecord } from "../src/lib/types.ts";
@@ -190,7 +191,10 @@ test("tasks API helpers call the expected endpoints and fetch task details", asy
   const api = createTasksApi();
 
   const tasks = await fetchTasks(api);
-  const createdTask = await api.createTask({ title: "Write docs" });
+  const createdTask = await api.createTask({
+    parent_task_id: "plan-1",
+    title: "Write docs",
+  });
   const updatedTask = await api.updateTask("task-1", { status: "review" });
   const comment = await api.addComment("task-1", {
     author: "agent-1",
@@ -223,6 +227,61 @@ test("tasks API helpers call the expected endpoints and fetch task details", asy
       ["DELETE", "http://localhost:4173/api/tasks/task-1"],
     ],
   );
+  assert.equal(
+    calls[2]?.init?.body,
+    JSON.stringify({
+      parent_task_id: "plan-1",
+      title: "Write docs",
+    }),
+  );
+});
+
+test("groupTasksByParent collapses child tasks under their parent for board rendering", () => {
+  const childTask = createTask({
+    comments: [
+      {
+        author: "agent-1",
+        content: "Working on it.",
+        created_at: 2,
+        id: "comment-1",
+        task_id: "child-1",
+        type: "comment",
+      },
+    ],
+    id: "child-1",
+    parent: createTaskRecord({
+      child_count: 1,
+      id: "plan-1",
+      title: "Launch plan",
+    }),
+    parent_task_id: "plan-1",
+    title: "Ship API",
+  });
+  const parentTask = createTask({
+    child_count: 1,
+    children: [
+      createTaskRecord({
+        id: "child-1",
+        parent_task_id: "plan-1",
+        title: "Ship API",
+      }),
+    ],
+    id: "plan-1",
+    title: "Launch plan",
+  });
+  const standaloneTask = createTask({
+    id: "task-standalone",
+    title: "Review copy",
+  });
+
+  const boardTasks = groupTasksByParent([childTask, parentTask, standaloneTask]);
+
+  assert.deepEqual(
+    boardTasks.map((task) => task.id),
+    ["plan-1", "task-standalone"],
+  );
+  assert.equal(boardTasks[0]?.children?.[0]?.id, "child-1");
+  assert.equal((boardTasks[0]?.children?.[0] as Task | undefined)?.comments[0]?.id, "comment-1");
 });
 
 test("TasksStore toggles subtasks and refetches when task SSE events arrive", async () => {
@@ -297,6 +356,7 @@ test("TasksStore toggles subtasks and refetches when task SSE events arrive", as
 
   await store.start();
   assert.equal(store.getSnapshot().tasks[0]?.subtasks[0]?.done, false);
+  assert.equal(store.getSnapshot().boardTasks[0]?.id, "task-1");
   assert.equal(store.getSnapshot().status, "ready");
 
   const updatedSubtask = await store.toggleSubtask("task-1", "subtask-1");

@@ -421,105 +421,28 @@ type AgentHierarchy = {
 };
 
 function buildAgentHierarchy(agents: AgentConfig[]): AgentHierarchy {
+  // Simple hierarchy: the default agent is root, everyone else is a direct child.
+  // The allowAgents (delegatesTo) data is a spawn-permission model, NOT a reporting hierarchy.
+  // An agent that can spawn another agent doesn't mean that agent reports to them.
   const childrenByAgent = new Map<string, string[]>();
   const parentByAgent = new Map<string, string | null>();
-  const delegatesByAgent = new Map<string, string[]>();
-  const directDelegatorsByAgent = new Map<string, string[]>();
-  const agentOrder = new Map<string, number>();
-  const rootId = agents.find((agent) => agent.isDefault)?.id ?? null;
+  
+  const rootId = agents.find((agent) => agent.isDefault)?.id ?? agents[0]?.id ?? null;
+  const rootChildren: string[] = [];
 
-  for (const [index, agent] of agents.entries()) {
-    agentOrder.set(agent.id, index);
+  for (const agent of agents) {
     childrenByAgent.set(agent.id, []);
-    parentByAgent.set(agent.id, null);
-    delegatesByAgent.set(agent.id, agent.delegatesTo);
-  }
-
-  const reachabilityCache = new Map<string, boolean>();
-
-  function canReach(startId: string, targetId: string, trail = new Set<string>()) {
-    if (startId === targetId) {
-      return false;
-    }
-
-    const cacheKey = `${startId}->${targetId}`;
-    const cachedValue = reachabilityCache.get(cacheKey);
-
-    if (cachedValue !== undefined) {
-      return cachedValue;
-    }
-
-    if (trail.has(startId)) {
-      reachabilityCache.set(cacheKey, false);
-      return false;
-    }
-
-    const nextTrail = new Set(trail);
-    nextTrail.add(startId);
-
-    for (const nextId of delegatesByAgent.get(startId) ?? []) {
-      if (nextId === targetId || canReach(nextId, targetId, nextTrail)) {
-        reachabilityCache.set(cacheKey, true);
-        return true;
-      }
-    }
-
-    reachabilityCache.set(cacheKey, false);
-    return false;
-  }
-
-  for (const agent of agents) {
-    for (const delegateId of agent.delegatesTo) {
-      const delegators = directDelegatorsByAgent.get(delegateId) ?? [];
-      delegators.push(agent.id);
-      directDelegatorsByAgent.set(delegateId, delegators);
-    }
-  }
-
-  for (const agent of agents) {
+    
     if (agent.id === rootId) {
-      continue;
-    }
-
-    const directDelegators = directDelegatorsByAgent.get(agent.id) ?? [];
-
-    if (directDelegators.length === 0) {
-      continue;
-    }
-
-    const closestDelegators = directDelegators.filter(
-      (candidateId) =>
-        !directDelegators.some(
-          (otherId) => otherId !== candidateId && canReach(candidateId, otherId),
-        ),
-    );
-
-    const parentId = [...closestDelegators].sort((leftId, rightId) => {
-      const leftIsRoot = leftId === rootId;
-      const rightIsRoot = rightId === rootId;
-
-      if (leftIsRoot !== rightIsRoot) {
-        return leftIsRoot ? 1 : -1;
-      }
-
-      return (agentOrder.get(leftId) ?? Number.MAX_SAFE_INTEGER) - (agentOrder.get(rightId) ?? Number.MAX_SAFE_INTEGER);
-    })[0] ?? null;
-
-    if (parentId) {
-      parentByAgent.set(agent.id, parentId);
+      parentByAgent.set(agent.id, null);
+    } else {
+      parentByAgent.set(agent.id, rootId);
+      rootChildren.push(agent.id);
     }
   }
 
-  for (const agent of agents) {
-    const parentId = parentByAgent.get(agent.id);
-
-    if (!parentId) {
-      continue;
-    }
-
-    const children = childrenByAgent.get(parentId) ?? [];
-    children.push(agent.id);
-    childrenByAgent.set(parentId, children);
+  if (rootId) {
+    childrenByAgent.set(rootId, rootChildren);
   }
 
   return {

@@ -29,6 +29,7 @@ type CreateTaskInput = {
   created_by?: string | null;
   description?: string | null;
   metadata?: unknown | null;
+  parent_task_id?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
   title: string;
@@ -76,6 +77,7 @@ type TaskEventSource = {
 };
 
 type TasksSnapshot = {
+  boardTasks: Task[];
   error: Error | null;
   isLoading: boolean;
   status: TasksStatus;
@@ -194,6 +196,34 @@ export async function fetchTasks(api: TasksApi = createTasksApi()) {
   return Promise.all(taskRecords.map((task) => api.getTask(task.id)));
 }
 
+export function groupTasksByParent(tasks: Task[]) {
+  const tasksById = new Map(tasks.map((task) => [task.id, task] as const));
+
+  return tasks.flatMap((task) => {
+    if (task.parent_task_id && tasksById.has(task.parent_task_id)) {
+      return [];
+    }
+
+    const childTasks =
+      task.children?.flatMap((child) => {
+        const detailedChild = tasksById.get(child.id);
+        return detailedChild ? [detailedChild] : [];
+      }) ??
+      tasks.filter((candidate) => candidate.parent_task_id === task.id);
+
+    if (childTasks.length === 0) {
+      return [task];
+    }
+
+    return [
+      {
+        ...task,
+        children: childTasks,
+      },
+    ];
+  });
+}
+
 export class TasksStore {
   private readonly api: TasksApi;
   private readonly listeners = new Set<() => void>();
@@ -202,6 +232,7 @@ export class TasksStore {
   private requestId = 0;
   private started = false;
   private state: TasksSnapshot = {
+    boardTasks: [],
     error: null,
     isLoading: false,
     status: "idle",
@@ -342,6 +373,7 @@ export class TasksStore {
       }
 
       this.setState({
+        boardTasks: groupTasksByParent(tasks),
         error: null,
         isLoading: false,
         status: "ready",

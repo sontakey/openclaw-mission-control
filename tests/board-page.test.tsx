@@ -58,6 +58,15 @@ test("board helpers normalize task priorities and group tasks by status", () => 
   });
   const reviewTask = createTask({
     assignee_agent_id: "agent:marv",
+    children: [
+      createTask({
+        assignee_agent_id: "agent:solo",
+        id: "child-task-1",
+        parent_task_id: "task-review",
+        status: "assigned",
+        title: "Coordinate owners",
+      }),
+    ],
     id: "task-review",
     parent_task_id: "plan-launch",
     priority: "urgent",
@@ -83,6 +92,8 @@ test("board helpers normalize task priorities and group tasks by status", () => 
 
   const kanbanTask = mapTaskToKanbanTask(reviewTask);
   assert.equal(kanbanTask.assignee, "agent:marv");
+  assert.equal(kanbanTask.childTasks?.[0]?.id, "child-task-1");
+  assert.equal(kanbanTask.childTasks?.[0]?.subtasks.length, 0);
   assert.equal(kanbanTask.parentTaskId, "plan-launch");
   assert.equal(kanbanTask.priority, "high");
   assert.equal(kanbanTask.subtasks[0]?.done, true);
