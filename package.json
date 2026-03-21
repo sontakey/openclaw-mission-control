@@ -12,7 +12,7 @@
     "dev:server": "tsx watch server/index.ts",
     "lint": "npm run typecheck:client && npm run typecheck:server",
     "test": "node --import tsx --test tests/*.test.tsx",
-    "start": "node dist/server/index.js",
+    "start": "node dist/server/server/index.js",
     "typecheck:client": "tsc --noEmit -p tsconfig.json",
     "typecheck:server": "tsc --noEmit -p tsconfig.server.json"
   },

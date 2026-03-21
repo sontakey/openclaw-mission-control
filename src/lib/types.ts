@@ -50,9 +50,10 @@ export interface TaskRecord {
 }
 
 export interface Task extends TaskRecord {
-  children?: TaskRecord[];
+  children: TaskRecord[];
   comments: Comment[];
-  parent?: TaskRecord | null;
+  parent: TaskRecord | null;
+  parent_task_id: string | null;
   subtasks: Subtask[];
 }
 
@@ -68,6 +69,11 @@ export interface Agent {
   role: string;
   sessionKey: string | null;
   status: AgentStatus;
+}
+
+export interface AgentHierarchyNode {
+  agent: Agent;
+  children: AgentHierarchyNode[];
 }
 
 export interface Activity {

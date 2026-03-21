@@ -13,4 +13,8 @@ test("package scripts keep client and server dev workflows separate", async () =
     packageJson.scripts?.["dev:full"],
     'concurrently "vite" "tsx watch server/index.ts"',
   );
+  assert.equal(
+    packageJson.scripts?.start,
+    "node dist/server/server/index.js",
+  );
 });

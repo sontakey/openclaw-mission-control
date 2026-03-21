@@ -16,6 +16,7 @@ import type { Task } from "../src/lib/types.ts";
 function createTask(overrides: Partial<Task> = {}): Task {
   return {
     assignee_agent_id: null,
+    children: [],
     comments: [],
     completed_at: null,
     created_at: 1,
@@ -23,6 +24,8 @@ function createTask(overrides: Partial<Task> = {}): Task {
     description: "Investigate the issue",
     id: "task-1",
     metadata: null,
+    parent: null,
+    parent_task_id: null,
     priority: "normal",
     status: "inbox",
     subtasks: [],

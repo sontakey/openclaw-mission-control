@@ -56,6 +56,7 @@ function createTaskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
     description: "Investigate issue",
     id: "task-1",
     metadata: null,
+    parent_task_id: null,
     priority: "normal",
     status: "inbox",
     title: "Fix bug",
@@ -67,7 +68,10 @@ function createTaskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
 function createTask(overrides: Partial<Task> = {}): Task {
   return {
     ...createTaskRecord(),
+    children: [],
     comments: [],
+    parent: null,
+    parent_task_id: null,
     subtasks: [],
     ...overrides,
   };

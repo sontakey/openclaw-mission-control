@@ -30,11 +30,11 @@ test("deployment assets cover installer, environment, and docs", async () => {
   assert.match(gitignore, /^\.env$/m);
   assert.match(gitignore, /^\*\.db$/m);
 
-  assert.match(readme, /^# Mission Control$/m);
-  assert.match(readme, /^## Architecture Overview$/m);
-  assert.match(readme, /^## Local Setup$/m);
-  assert.match(readme, /^## Production Install$/m);
-  assert.match(readme, /server\/routes\/tasks\.ts/);
+  assert.match(readme, /^# .*Mission Control$/m);
+  assert.match(readme, /^## 🚀 Quick Start$/m);
+  assert.match(readme, /^## 🏗️ How It Works$/m);
+  assert.match(readme, /^## 🖥️ Deployment$/m);
+  assert.match(readme, /tasks\.ts\s+# Task CRUD \+ subtasks \+ comments/);
   assert.match(readme, /install\.sh/);
   assert.match(readme, /\.env\.example/);
 });

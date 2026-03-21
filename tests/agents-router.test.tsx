@@ -128,7 +128,7 @@ test("agents router merges configured agents with live sessions", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, [
     {
-      children: [],
+      children: ["beta"],
       currentActivity: "Debugging",
       delegatesTo: [],
       emoji: "A",
@@ -148,7 +148,7 @@ test("agents router merges configured agents with live sessions", async () => {
       id: "beta",
       lastHeartbeat: null,
       name: "Beta",
-      parentId: null,
+      parentId: "alpha",
       role: "Builder",
       sessionKey: "agent:beta:main",
       status: "offline",
@@ -283,7 +283,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, [
     {
-      children: ["kevin"],
+      children: [],
       currentActivity: null,
       delegatesTo: ["kevin"],
       emoji: "🔧",
@@ -296,7 +296,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       status: "offline",
     },
     {
-      children: ["marv", "harry"],
+      children: ["marv", "harry", "kevin", "penny", "voice"],
       currentActivity: null,
       delegatesTo: ["marv", "harry", "kevin"],
       emoji: "🎯",
@@ -309,7 +309,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       status: "offline",
     },
     {
-      children: ["penny"],
+      children: [],
       currentActivity: null,
       delegatesTo: ["penny"],
       emoji: "📢",
@@ -329,7 +329,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       id: "kevin",
       lastHeartbeat: null,
       name: "Kevin",
-      parentId: "marv",
+      parentId: "anton",
       role: "QA",
       sessionKey: null,
       status: "offline",
@@ -342,7 +342,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       id: "penny",
       lastHeartbeat: null,
       name: "Penny",
-      parentId: "harry",
+      parentId: "anton",
       role: "Research",
       sessionKey: null,
       status: "offline",
@@ -355,7 +355,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       id: "voice",
       lastHeartbeat: null,
       name: "Voice",
-      parentId: null,
+      parentId: "anton",
       role: "Assistant",
       sessionKey: null,
       status: "offline",

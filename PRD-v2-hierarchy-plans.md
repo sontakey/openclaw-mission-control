@@ -123,6 +123,6 @@ When a task has children, it renders as a **plan card** (visually distinct):
 - [x] Create src/components/kanban/plan-card.tsx: visually distinct plan card with thick left border, progress bar, multi-agent avatars, expand/collapse for children list.
 - [x] Update src/components/kanban/kanban-board.tsx and kanban-column.tsx: group tasks by parent. Plans render as plan-cards. Standalone tasks render as normal cards. Plan position = furthest-behind child status.
 - [x] Update src/components/kanban/new-task-dialog.tsx: add "Part of plan" dropdown and "Create as plan" toggle.
-- [ ] Update src/hooks/useTasks.ts: handle parent_task_id in create, fetch plan data, group tasks by parent for board rendering.
-- [ ] Update src/lib/types.ts: add parent_task_id, children, parent fields to Task type. Add AgentHierarchyNode type.
-- [ ] Build and deploy. Verify: tree renders, plans group on board, create child task under a plan, see progress bar update.
+- [x] Update src/hooks/useTasks.ts: handle parent_task_id in create, fetch plan data, group tasks by parent for board rendering.
+- [x] Update src/lib/types.ts: add parent_task_id, children, parent fields to Task type. Add AgentHierarchyNode type.
+- [x] Build and deploy. Verify: tree renders, plans group on board, create child task under a plan, see progress bar update.
