@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { getConfig, listSessions } from "../gateway-client.js";
+import { getDatabase } from "../db.js";
 
 const DEFAULT_CACHE_TTL_MS = 30_000;
 
@@ -9,6 +10,7 @@ type AgentStatus = "online" | "offline";
 type AgentSummary = {
   children: string[];
   currentActivity: string | null;
+  currentTask: { id: string; title: string; status: string } | null;
   delegatesTo: string[];
   emoji: string;
   id: string;
@@ -469,6 +471,30 @@ function buildSnapshot(configValue: unknown, sessionsValue: unknown) {
     sessionsByAgent.set(session.agentId, agentSessions);
   }
 
+  // Cross-reference local tasks DB to find current task per agent
+  const activeTasksByAgent = new Map<string, { id: string; title: string; status: string }>();
+  try {
+    const db = getDatabase();
+    const activeTasks = db.prepare(
+      `SELECT id, title, status, assignee_agent_id FROM tasks 
+       WHERE status IN ('in_progress', 'assigned', 'review') 
+       AND assignee_agent_id IS NOT NULL
+       ORDER BY CASE status WHEN 'in_progress' THEN 1 WHEN 'review' THEN 2 WHEN 'assigned' THEN 3 END`
+    ).all() as Array<{ id: string; title: string; status: string; assignee_agent_id: string }>;
+    
+    for (const task of activeTasks) {
+      if (!activeTasksByAgent.has(task.assignee_agent_id)) {
+        activeTasksByAgent.set(task.assignee_agent_id, {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+        });
+      }
+    }
+  } catch {
+    // DB not available, skip task lookup
+  }
+
   const agents = agentConfigs.map((agent) => {
     const agentSessions = sessionsByAgent.get(agent.id) ?? [];
     const primarySession = selectPrimarySession(agentSessions);
@@ -476,6 +502,7 @@ function buildSnapshot(configValue: unknown, sessionsValue: unknown) {
     return {
       children: [...(hierarchy.childrenByAgent.get(agent.id) ?? [])],
       currentActivity: primarySession?.currentActivity ?? null,
+      currentTask: activeTasksByAgent.get(agent.id) ?? null,
       delegatesTo: [...agent.delegatesTo],
       emoji: agent.emoji,
       id: agent.id,

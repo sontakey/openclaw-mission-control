@@ -60,6 +60,7 @@ export interface Task extends TaskRecord {
 export interface Agent {
   children: string[];
   currentActivity: string | null;
+  currentTask: { id: string; title: string; status: string } | null;
   delegatesTo: string[];
   emoji: string;
   id: string;

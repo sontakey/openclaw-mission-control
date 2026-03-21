@@ -267,7 +267,8 @@ export const AgentCard = ({
     status: agent.status,
   });
   const config = statusConfig[status];
-  const taskSummary = agent.currentActivity?.trim() || "No task assigned";
+  const task = agent.currentTask;
+  const taskSummary = task ? task.title : (agent.currentActivity?.trim() || null);
 
   return (
     <details className="w-[18rem] rounded-2xl [&_summary::-webkit-details-marker]:hidden">
@@ -296,7 +297,21 @@ export const AgentCard = ({
             <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.2em]">
               Current task
             </p>
-            <p className="line-clamp-3 text-sm leading-6">{taskSummary}</p>
+            {task ? (
+              <div className="mt-0.5">
+                <span className={cn(
+                  "inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase mr-1.5",
+                  task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                  task.status === "review" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
+                  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                )}>
+                  {task.status.replace("_", " ")}
+                </span>
+                <p className="text-sm mt-1 line-clamp-2">{task.title}</p>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm italic">Idle</p>
+            )}
           </div>
 
           <div className="text-muted-foreground mt-auto flex items-center justify-between pt-5 text-xs">
