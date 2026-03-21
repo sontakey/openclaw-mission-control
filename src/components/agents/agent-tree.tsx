@@ -294,23 +294,25 @@ export const AgentCard = ({
           </div>
 
           <div className="mt-5 space-y-2">
-            <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.2em]">
-              Current task
-            </p>
             {task ? (
-              <div className="mt-0.5">
-                <span className={cn(
-                  "inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase mr-1.5",
-                  task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
-                  task.status === "review" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
-                  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                )}>
-                  {task.status.replace("_", " ")}
-                </span>
-                <p className="text-sm mt-1 line-clamp-2">{task.title}</p>
-              </div>
+              <>
+                <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.2em]">
+                  Current task
+                </p>
+                <div className="mt-0.5">
+                  <span className={cn(
+                    "inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase mr-1.5",
+                    task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                    task.status === "review" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" :
+                    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  )}>
+                    {task.status.replace("_", " ")}
+                  </span>
+                  <p className="text-sm mt-1 line-clamp-2">{task.title}</p>
+                </div>
+              </>
             ) : (
-              <p className="text-muted-foreground text-sm italic">Idle</p>
+              <p className="text-muted-foreground text-sm italic">No task</p>
             )}
           </div>
 
