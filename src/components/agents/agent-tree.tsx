@@ -12,6 +12,13 @@ export type AgentTreeProps = {
   selectedAgentId?: string | null;
 };
 
+function getCompactModelLabel(model?: string | null) {
+  if (!model) return "Unknown model";
+  const parts = model.split("/");
+  return parts[parts.length - 1] || model;
+}
+
+
 export type AgentTreeNode = {
   agent: Agent;
   children: AgentTreeNode[];
@@ -202,7 +209,7 @@ export const AgentTree = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {standalone.map((agent) => (
               <AgentCard
                 key={agent.id}
@@ -227,7 +234,7 @@ export const AgentGrid = ({
   const directReportCounts = getDirectReportCounts(agents);
 
   return (
-    <div className={cn("flex flex-wrap gap-4", className)}>
+    <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3", className)}>
       {agents.map((agent) => (
         <AgentCard
           key={agent.id}
@@ -338,8 +345,11 @@ export const AgentCard = ({
       </div>
 
       <div className="mt-4 space-y-1">
-        <h3 className="text-base font-semibold tracking-tight">{agent.name}</h3>
-        <p className="text-muted-foreground text-sm">{agent.role}</p>
+        <h3 className="truncate text-base font-semibold tracking-tight" title={agent.name}>{agent.name}</h3>
+        <p className="text-muted-foreground text-sm truncate" title={agent.model ?? agent.role}>
+          <span className="sm:hidden">{getCompactModelLabel(agent.model) || agent.role}</span>
+          <span className="hidden sm:inline">{agent.model ?? agent.role}</span>
+        </p>
       </div>
 
       <div className="mt-5 space-y-2">
@@ -361,7 +371,7 @@ export const AgentCard = ({
               >
                 {task.status.replace("_", " ")}
               </span>
-              <p className="mt-1 line-clamp-2 text-sm">{task.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm" title={task.title}>{task.title}</p>
             </div>
           </>
         ) : (

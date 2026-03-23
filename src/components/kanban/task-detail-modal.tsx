@@ -138,16 +138,16 @@ export const TaskDetailModal = ({
   const [subtasksOpen, setSubtasksOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  if (!task) return null;
-
   const {
     data: tmuxOutput,
     error: tmuxOutputError,
     isLoading: isTmuxOutputLoading,
   } = useTaskTmuxOutput({
-    enabled: open && Boolean(task.tmuxSession),
-    taskId: task.id,
+    enabled: open && Boolean(task?.tmuxSession),
+    taskId: task?.id ?? "",
   });
+
+  if (!task) return null;
   const priority = priorityConfig[task.priority];
   const hasSubtasks = task.subtasks.length > 0;
   const isReview = task.status === "review";

@@ -20,7 +20,7 @@ function AppLayout() {
   const showChatPanel = !pathname.startsWith("/chat");
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <DashboardSidebar />
       <SidebarInset className="min-h-screen">
         <div className="flex min-h-screen flex-col">
@@ -28,7 +28,7 @@ function AppLayout() {
             <SidebarToggle />
           </header>
           <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 overflow-auto bg-slate-50 p-6 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
+            <main className="min-w-0 flex-1 overflow-auto bg-slate-50 p-4 text-slate-900 sm:p-6 dark:bg-slate-900 dark:text-slate-50">
               <Routes>
                 <Route path="/" element={<BoardPage />} />
                 <Route path="/board" element={<BoardPage />} />

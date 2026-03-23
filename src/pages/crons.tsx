@@ -137,25 +137,35 @@ export const CronsPageContent = ({
             ) : crons.length === 0 ? (
               <p className="text-muted-foreground text-sm">No cron jobs configured.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead className="text-muted-foreground border-b">
+              <div className="overflow-hidden">
+                <table className="w-full table-fixed text-left text-sm">
+                  <thead className="text-muted-foreground hidden border-b sm:table-header-group">
                     <tr>
-                      <th className="py-2 pr-4 font-medium">Name</th>
+                      <th className="py-2 pr-4 font-medium sm:w-[200px]">Name</th>
                       <th className="py-2 pr-4 font-medium">Schedule</th>
                       <th className="py-2 pr-4 font-medium">Status</th>
                       <th className="py-2 pr-4 font-medium">Next run</th>
                       <th className="py-2 font-medium">Last run</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="block sm:table-row-group">
                     {crons.map((cron) => (
-                      <tr key={cron.id} className="border-b last:border-b-0">
-                        <td className="py-3 pr-4">{cron.name}</td>
-                        <td className="py-3 pr-4 font-mono text-xs">{cron.schedule}</td>
-                        <td className="py-3 pr-4">{getCronStatusLabel(cron.isActive)}</td>
-                        <td className="py-3 pr-4">{formatTimestamp(cron.nextRunAt)}</td>
-                        <td className="py-3">{formatTimestamp(cron.lastRunAt)}</td>
+                      <tr key={cron.id} className="block border-b py-3 last:border-b-0 sm:table-row sm:py-0">
+                        <td className="block py-1 pr-0 sm:table-cell sm:py-3 sm:pr-4">
+                          <div className="max-w-[200px] truncate font-medium" title={cron.name}>{cron.name}</div>
+                        </td>
+                        <td className="block py-1 pr-0 font-mono text-xs sm:table-cell sm:py-3 sm:pr-4">
+                          <span className="text-muted-foreground mr-2 sm:hidden">Schedule:</span>{cron.schedule}
+                        </td>
+                        <td className="block py-1 pr-0 sm:table-cell sm:py-3 sm:pr-4">
+                          <span className="text-muted-foreground mr-2 sm:hidden">Status:</span>{getCronStatusLabel(cron.isActive)}
+                        </td>
+                        <td className="block py-1 pr-0 sm:table-cell sm:py-3 sm:pr-4">
+                          <span className="text-muted-foreground mr-2 sm:hidden">Next:</span>{formatTimestamp(cron.nextRunAt)}
+                        </td>
+                        <td className="block py-1 sm:table-cell sm:py-3">
+                          <span className="text-muted-foreground mr-2 sm:hidden">Last:</span>{formatTimestamp(cron.lastRunAt)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

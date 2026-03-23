@@ -135,11 +135,17 @@ const TaskCard = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50">
+          <h3
+            className="line-clamp-2 text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50"
+            title={task.title}
+          >
             {task.title}
           </h3>
           {task.description ? (
-            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+            <p
+              className="mt-2 line-clamp-1 text-xs leading-5 text-slate-600 dark:text-slate-300"
+              title={task.description}
+            >
               {task.description}
             </p>
           ) : null}
@@ -155,7 +161,7 @@ const TaskCard = ({
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span className="truncate">
+        <span className="truncate" title={task.assignee ? task.assignee : "Unassigned"}>
           {task.assignee ? task.assignee : "Unassigned"}
         </span>
         <div className="flex items-center gap-3">

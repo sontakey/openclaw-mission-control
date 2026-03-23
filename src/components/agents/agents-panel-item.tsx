@@ -25,6 +25,13 @@ const statusConfig: Record<
   },
 };
 
+function getCompactModelLabel(model?: string | null) {
+  if (!model) return "Unknown model";
+  const parts = model.split("/");
+  return parts[parts.length - 1] || model;
+}
+
+
 // Format relative time like "4 hours ago", "Just now", etc.
 const formatRelativeTime = (timestamp?: number): string => {
   if (!timestamp) return "Never";
@@ -139,8 +146,12 @@ export const AgentsPanelItem = ({
       {/* Name & Role */}
       <div className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{agent.name}</span>
-        <span className="text-muted-foreground block truncate text-xs">
-          {agent.role}
+        <span
+          className="text-muted-foreground block truncate text-xs"
+          title={agent.model ?? agent.role}
+        >
+          <span className="sm:hidden">{getCompactModelLabel(agent.model)}</span>
+          <span className="hidden sm:inline">{agent.model ?? agent.role}</span>
         </span>
       </div>
 
