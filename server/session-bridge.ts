@@ -1,6 +1,6 @@
 import type { SseRecord } from "./sse.js";
 import type { MissionControlDatabase } from "./db.js";
-import { listSessions } from "./gateway-client.js";
+import { listSessions, getSessionHistory } from "./gateway-client.js";
 import type { TaskSseBroadcaster } from "./routes/tasks.js";
 
 type TaskRow = {
@@ -52,6 +52,7 @@ const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const ORPHAN_GRACE_CYCLES = 3; // Must be missing for 3+ consecutive polls before marking done
 const missingCounts = new Map<string, number>();
+const titleCache = new Map<string, string>();
 
 const SESSION_STATUS_MAP: Record<string, string> = {
   accepted: "assigned",
@@ -224,6 +225,61 @@ function listTasksBySessionKey(db: MissionControlDatabase): Map<string, TaskRow>
   return map;
 }
 
+async function enrichTitle(sessionKey: string, fallbackTitle: string): Promise<string> {
+  // Check cache first
+  const cached = titleCache.get(sessionKey);
+  if (cached) return cached;
+
+  try {
+    const raw = await getSessionHistory(sessionKey, 5);
+    const payload = unwrapGatewayPayload(raw);
+    if (!isRecord(payload)) return fallbackTitle;
+
+    const messages = Array.isArray(payload.messages) ? payload.messages : [];
+    
+    // Look for the first user message which contains the spawn task
+    for (const msg of messages) {
+      if (!isRecord(msg)) continue;
+      const role = msg.role;
+      if (role !== "user") continue;
+      
+      // Content can be string or array of content blocks
+      let text = "";
+      if (typeof msg.content === "string") {
+        text = msg.content;
+      } else if (Array.isArray(msg.content)) {
+        for (const block of msg.content) {
+          if (isRecord(block) && typeof block.text === "string") {
+            text = block.text;
+            break;
+          }
+        }
+      }
+      
+      if (text.length > 10) {
+        // Extract first meaningful line as title (skip empty lines)
+        const lines = text.split("\n").filter((l: string) => l.trim().length > 0);
+        let title = lines[0] ?? fallbackTitle;
+        // Clean up common prefixes
+        title = title.replace(/^(You are \w+[,.]?\s*)/i, "").trim();
+        if (title.length > 120) title = title.slice(0, 117) + "...";
+        if (title.length < 5) return fallbackTitle;
+        
+        // Get agent from session key
+        const parts = sessionKey.split(":");
+        const agentId = parts.length >= 2 ? parts[1] : null;
+        const enriched = agentId ? `${agentId}: ${title}` : title;
+        titleCache.set(sessionKey, enriched);
+        return enriched;
+      }
+    }
+  } catch {
+    // History fetch failed, use fallback
+  }
+  
+  return fallbackTitle;
+}
+
 function deriveKindFromKey(key: string): string | undefined {
   const parts = key.split(":");
   if (parts.length < 3) return undefined;
@@ -287,6 +343,8 @@ export async function syncSessionsToTasks(
     };
 
     if (!existing) {
+      // Enrich title from session history on first creation
+      const enrichedTitle = await enrichTitle(sessionKey, title);
       const task = db
         .prepare(
           `INSERT INTO tasks (title, description, status, priority, assignee_agent_id, created_at, updated_at, completed_at, metadata)
@@ -294,7 +352,7 @@ export async function syncSessionsToTasks(
            RETURNING *`,
         )
         .get(
-          title,
+          enrichedTitle,
           `Live session: ${sessionKey}`,
           taskStatus,
           agentId,
