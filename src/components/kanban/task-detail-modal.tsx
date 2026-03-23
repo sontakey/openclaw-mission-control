@@ -107,7 +107,7 @@ export function TaskTmuxOutputPanel({
 
       <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-inner">
         {error ? (
-          <div className="px-4 py-3 text-xs text-red-300">{error}</div>
+          <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">Session ended — no live output available.</div>
         ) : output ? (
           <pre className="max-h-72 overflow-auto px-4 py-3 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-100">
             {output}
