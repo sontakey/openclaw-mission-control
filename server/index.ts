@@ -70,6 +70,7 @@ if (isDirectRun()) {
 
   app.listen(port, () => {
     console.log(`Mission Control server listening on port ${port}`);
-    startSessionPoller(getDatabase(), sse);
+    // Session poller disabled — using push-based task creation instead
+    // startSessionPoller(getDatabase(), sse);
   });
 }
