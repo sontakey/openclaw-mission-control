@@ -50,6 +50,9 @@ type SyncResult = {
 const SKIP_KINDS = new Set(["cron", "main", "heartbeat", "chat"]);
 const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+const ORPHAN_GRACE_CYCLES = 3; // Must be missing for 3+ consecutive polls before marking done
+const missingCounts = new Map<string, number>();
+
 const SESSION_STATUS_MAP: Record<string, string> = {
   accepted: "assigned",
   active: "in_progress",
