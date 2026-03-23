@@ -220,11 +220,13 @@ const TaskCard = ({
         </div>
         <span
           className={cn(
-            "hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase sm:inline-flex",
+            "shrink-0 rounded-full text-[10px] font-semibold tracking-[0.16em] uppercase",
+            "h-2 w-2 lg:h-auto lg:w-auto lg:px-2.5 lg:py-1",
             priorityBadgeStyles[task.priority],
           )}
+          title={getPriorityLabel(task.priority)}
         >
-          {getPriorityLabel(task.priority)}
+          <span className="hidden lg:inline">{getPriorityLabel(task.priority)}</span>
         </span>
       </div>
 
