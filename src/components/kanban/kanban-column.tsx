@@ -72,11 +72,11 @@ const priorityBadgeStyles: Record<KanbanTask["priority"], string> = {
 function getPriorityLabel(priority: KanbanTask["priority"]) {
   switch (priority) {
     case "high":
-      return "High priority";
+      return "P1";
     case "low":
-      return "Low priority";
+      return "P4";
     default:
-      return "Medium priority";
+      return "P3";
   }
 }
 
@@ -218,23 +218,24 @@ const TaskCard = ({
             </p>
           ) : null}
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full text-[10px] font-semibold tracking-[0.16em] uppercase",
-            "h-2 w-2 lg:h-auto lg:w-auto lg:px-2.5 lg:py-1",
-            priorityBadgeStyles[task.priority],
-          )}
-          title={getPriorityLabel(task.priority)}
-        >
-          <span className="hidden lg:inline">{getPriorityLabel(task.priority)}</span>
-        </span>
+
       </div>
 
-      <div className="mt-2 sm:mt-4 flex items-center justify-between gap-2 border-t border-slate-200/80 pt-2 sm:pt-3 text-[11px] sm:text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span className="truncate font-medium" title={task.assignee ? task.assignee : "Unassigned"}>
-          {task.assignee ? task.assignee : "Unassigned"}
-        </span>
-        <div className="flex items-center gap-3">
+      <div className="mt-2 sm:mt-3 flex items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 sm:pt-2 text-[11px] sm:text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="truncate font-medium" title={task.assignee ? task.assignee : "Unassigned"}>
+            {task.assignee ? task.assignee : "Unassigned"}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none",
+              priorityBadgeStyles[task.priority],
+            )}
+          >
+            {getPriorityLabel(task.priority)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
           {task.subtasks.length > 0 ? (
             <span>
               {task.subtasks.length} subtask{task.subtasks.length === 1 ? "" : "s"}
