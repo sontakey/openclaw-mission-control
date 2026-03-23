@@ -143,7 +143,7 @@ const SourceBadge = ({ source }: { source?: TaskSource }) => {
   const badge = SOURCE_BADGES[source];
   return (
     <span
-      className="absolute -top-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] leading-none shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
+      className="absolute -top-1 -right-1 z-10 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-white text-[8px] sm:text-[10px] leading-none shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
       title={badge.label}
     >
       {badge.emoji}
@@ -187,7 +187,7 @@ const TaskCard = ({
       data-task-card
       data-task-source={task.source}
       className={cn(
-        "task-card-animate relative cursor-pointer rounded-xl border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-slate-50/80 dark:bg-slate-950 dark:hover:bg-slate-900/80",
+        "task-card-animate relative cursor-pointer rounded-lg border bg-white p-2.5 sm:p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-slate-50/80 dark:bg-slate-950 dark:hover:bg-slate-900/80",
         isSessionTask && isActive
           ? "border-emerald-300 dark:border-emerald-800"
           : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700",
@@ -195,23 +195,23 @@ const TaskCard = ({
     >
       <SourceBadge source={task.source} />
 
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-1.5 sm:gap-3">
         <div className="min-w-0">
           {isSessionTask && isActive ? (
-            <div className="mb-1.5 flex items-center text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+            <div className="mb-0.5 sm:mb-1.5 flex items-center text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
               <PulseDot />
               <span>Live{elapsed ? ` \u00b7 ${elapsed}` : ""}</span>
             </div>
           ) : null}
           <h3
-            className="line-clamp-2 text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50"
+            className="line-clamp-2 text-[15px] sm:text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50"
             title={task.title}
           >
             {task.title}
           </h3>
           {task.description ? (
             <p
-              className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300 sm:line-clamp-1"
+              className="mt-1 sm:mt-2 line-clamp-1 text-[11px] sm:text-xs leading-4 sm:leading-5 text-slate-500 dark:text-slate-400"
               title={task.description}
             >
               {task.description}
@@ -228,7 +228,7 @@ const TaskCard = ({
         </span>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+      <div className="mt-2 sm:mt-4 flex items-center justify-between gap-2 border-t border-slate-200/80 pt-2 sm:pt-3 text-[11px] sm:text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
         <span className="truncate font-medium" title={task.assignee ? task.assignee : "Unassigned"}>
           {task.assignee ? task.assignee : "Unassigned"}
         </span>
