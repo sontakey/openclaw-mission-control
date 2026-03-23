@@ -8,12 +8,13 @@ type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
-type SseRecord = Record<string, JsonValue>;
+export type SseRecord = Record<string, JsonValue>;
 
 export type SseEventMap = {
   activity: { activity: SseRecord };
   agent_status: { agents: SseRecord[] };
   comment_added: { comment: SseRecord; taskId: string };
+  session_sync: { completed: number; created: number; total_active: number; updated: number };
   task_created: { task: SseRecord };
   task_deleted: { taskId: string };
   task_updated: { task: SseRecord };

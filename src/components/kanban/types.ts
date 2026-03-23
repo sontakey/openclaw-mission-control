@@ -11,6 +11,8 @@ export type KanbanSubtask = {
   doneAt?: number;
 };
 
+export type TaskSource = "session" | "work_queue" | "manual";
+
 // Kanban's own task type (isolated from Convex)
 export type KanbanTask = {
   childTasks?: KanbanTask[];
@@ -25,6 +27,9 @@ export type KanbanTask = {
   subtasks: KanbanSubtask[];
   tmuxSession?: string;
   documentCount?: number;
+  source?: TaskSource;
+  startedAt?: number;
+  sessionKey?: string;
 };
 
 // Predefined column variants with built-in styling

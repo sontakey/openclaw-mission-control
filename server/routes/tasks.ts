@@ -5,10 +5,12 @@ import type { MissionControlDatabase } from "../db.js";
 import { getDatabase } from "../db.js";
 import { sse } from "../sse.js";
 import type { SseEventMap } from "../sse.js";
+import { syncSessionsToTasks } from "../session-bridge.js";
 import { captureTmuxOutput as captureTaskTmuxOutput, DEFAULT_TMUX_CAPTURE_LINES } from "../tmux.js";
 import { syncWorkQueueToTasks } from "../work-queue.js";
 
 const TASK_STATUSES = new Set(["inbox", "assigned", "in_progress", "review", "done"]);
+const TASK_SOURCES = new Set(["session", "work_queue", "manual"]);
 const TASK_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
 const COMMENT_TYPES = new Set(["comment", "status_change", "system"]);
 const SUBTASK_STATUSES = new Set(["pending", "in_progress", "done", "blocked"]);
@@ -305,11 +307,13 @@ function listTaskSummaries(
     assignee,
     parentId,
     plan,
+    source,
     status,
   }: {
     assignee?: string;
     parentId?: string;
     plan?: boolean;
+    source?: string;
     status?: string;
   } = {},
 ) {
@@ -329,6 +333,14 @@ function listTaskSummaries(
   if (parentId) {
     conditions.push("tasks.parent_task_id = ?");
     values.push(parentId);
+  }
+
+  if (source === "session") {
+    conditions.push("json_extract(tasks.metadata, '$.source') = 'session'");
+  } else if (source === "work_queue") {
+    conditions.push("json_extract(tasks.metadata, '$.source') = 'agent-work-queue'");
+  } else if (source === "manual") {
+    conditions.push("(tasks.metadata IS NULL OR (json_extract(tasks.metadata, '$.source') IS NOT 'session' AND json_extract(tasks.metadata, '$.source') IS NOT 'agent-work-queue'))");
   }
 
   if (plan === true) {
@@ -440,9 +452,15 @@ export function createTasksRouter({
     const assignee = getTrimmedString(getSingleValue(request.query.assignee));
     const parentId = getTrimmedString(getSingleValue(request.query.parent_id));
     const plan = getOptionalQueryBoolean(request.query.plan);
+    const source = getTrimmedString(getSingleValue(request.query.source));
 
     if (status && !TASK_STATUSES.has(status)) {
       sendBadRequest(response, "Invalid status filter.");
+      return;
+    }
+
+    if (source && !TASK_SOURCES.has(source)) {
+      sendBadRequest(response, "Invalid source filter.");
       return;
     }
 
@@ -455,10 +473,31 @@ export function createTasksRouter({
       assignee,
       parentId,
       plan: plan ?? undefined,
+      source,
       status,
     });
 
     response.json({ tasks: tasks.map(serializeTaskSummary) });
+  });
+
+  router.post("/sync-sessions", async (_request, response) => {
+    try {
+      const result = await syncSessionsToTasks(resolveDb(), broadcaster);
+      broadcaster.broadcast("activity", {
+        activity: {
+          id: `sync-${Date.now()}`,
+          type: "session_sync",
+          agent_id: null,
+          task_id: null,
+          message: `Session sync: ${result.created} created, ${result.updated} updated, ${result.completed} completed`,
+          metadata: result,
+          created_at: Math.floor(Date.now() / 1000),
+        },
+      });
+      response.json(result);
+    } catch {
+      response.status(502).json({ error: "Failed to sync sessions." });
+    }
   });
 
   router.get("/:id", (request, response) => {

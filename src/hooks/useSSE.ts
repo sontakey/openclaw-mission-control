@@ -6,6 +6,7 @@ const SSE_EVENT_TYPES = [
   "activity",
   "agent_status",
   "comment_added",
+  "session_sync",
   "task_created",
   "task_deleted",
   "task_updated",
@@ -19,6 +20,7 @@ export type SseEventMap = {
   activity: { activity: Activity };
   agent_status: { agents: Agent[] };
   comment_added: { comment: Comment; taskId: string };
+  session_sync: { completed: number; created: number; total_active: number; updated: number };
   task_created: { task: TaskEventPayload };
   task_deleted: { taskId: string };
   task_updated: { task: TaskEventPayload };
@@ -63,6 +65,7 @@ function createListenerMap(): SseListenerMap {
     activity: new Set<SseListener<"activity">>(),
     agent_status: new Set<SseListener<"agent_status">>(),
     comment_added: new Set<SseListener<"comment_added">>(),
+    session_sync: new Set<SseListener<"session_sync">>(),
     task_created: new Set<SseListener<"task_created">>(),
     task_deleted: new Set<SseListener<"task_deleted">>(),
     task_updated: new Set<SseListener<"task_updated">>(),

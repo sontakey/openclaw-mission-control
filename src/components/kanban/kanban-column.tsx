@@ -18,6 +18,7 @@ import {
   type KanbanColumnDef,
   type KanbanSubtask,
   type KanbanTask,
+  type TaskSource,
 } from "./types";
 
 const columnIconComponents: Record<
@@ -108,6 +109,55 @@ function buildPlanCardTask(task: KanbanTask): KanbanTask {
   };
 }
 
+const SOURCE_BADGES: Record<TaskSource, { emoji: string; label: string }> = {
+  session: { emoji: "\u{1F504}", label: "Live session" },
+  work_queue: { emoji: "\u{1F4CB}", label: "Work queue" },
+  manual: { emoji: "\u{270B}", label: "Manual" },
+};
+
+function formatElapsed(startedAt: number): string {
+  const elapsedMs = Date.now() - startedAt;
+  if (elapsedMs < 0) return "0s";
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function useElapsedTime(startedAt: number | undefined, isActive: boolean) {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    if (!startedAt || !isActive) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [startedAt, isActive]);
+  if (!startedAt) return null;
+  return formatElapsed(startedAt);
+}
+
+const SourceBadge = ({ source }: { source?: TaskSource }) => {
+  if (!source) return null;
+  const badge = SOURCE_BADGES[source];
+  return (
+    <span
+      className="absolute -top-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] leading-none shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
+      title={badge.label}
+    >
+      {badge.emoji}
+    </span>
+  );
+};
+
+const PulseDot = () => (
+  <span className="relative mr-1.5 inline-flex h-2 w-2 shrink-0">
+    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+  </span>
+);
+
 const TaskCard = ({
   task,
   onTaskClick,
@@ -124,6 +174,10 @@ const TaskCard = ({
     onTaskClick(task);
   };
 
+  const isSessionTask = task.source === "session";
+  const isActive = task.status === "in_progress";
+  const elapsed = useElapsedTime(task.startedAt, isSessionTask && isActive);
+
   return (
     <div
       role="button"
@@ -131,10 +185,24 @@ const TaskCard = ({
       onClick={() => onTaskClick(task)}
       onKeyDown={handleKeyDown}
       data-task-card
-      className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
+      data-task-source={task.source}
+      className={cn(
+        "task-card-animate relative cursor-pointer rounded-xl border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-slate-50/80 dark:bg-slate-950 dark:hover:bg-slate-900/80",
+        isSessionTask && isActive
+          ? "border-emerald-300 dark:border-emerald-800"
+          : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700",
+      )}
     >
+      <SourceBadge source={task.source} />
+
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
+          {isSessionTask && isActive ? (
+            <div className="mb-1.5 flex items-center text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              <PulseDot />
+              <span>Live{elapsed ? ` \u00b7 ${elapsed}` : ""}</span>
+            </div>
+          ) : null}
           <h3
             className="line-clamp-2 text-sm leading-snug font-semibold text-slate-950 dark:text-slate-50"
             title={task.title}
@@ -143,7 +211,7 @@ const TaskCard = ({
           </h3>
           {task.description ? (
             <p
-              className="mt-2 line-clamp-1 text-xs leading-5 text-slate-600 dark:text-slate-300"
+              className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300 sm:line-clamp-1"
               title={task.description}
             >
               {task.description}
@@ -152,7 +220,7 @@ const TaskCard = ({
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase",
+            "hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase sm:inline-flex",
             priorityBadgeStyles[task.priority],
           )}
         >
@@ -161,7 +229,7 @@ const TaskCard = ({
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span className="truncate" title={task.assignee ? task.assignee : "Unassigned"}>
+        <span className="truncate font-medium" title={task.assignee ? task.assignee : "Unassigned"}>
           {task.assignee ? task.assignee : "Unassigned"}
         </span>
         <div className="flex items-center gap-3">

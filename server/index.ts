@@ -10,6 +10,8 @@ import { chatRouter } from "./routes/chat.js";
 import { gatewayRouter } from "./routes/gateway.js";
 import { healthRouter } from "./routes/health.js";
 import { tasksRouter } from "./routes/tasks.js";
+import { startSessionPoller } from "./session-poller.js";
+import { sse } from "./sse.js";
 
 export type CreateAppOptions = {
   clientDistPath?: string;
@@ -68,5 +70,6 @@ if (isDirectRun()) {
 
   app.listen(port, () => {
     console.log(`Mission Control server listening on port ${port}`);
+    startSessionPoller(getDatabase(), sse);
   });
 }

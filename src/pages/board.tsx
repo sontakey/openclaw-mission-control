@@ -10,6 +10,7 @@ import {
   type ColumnVariant,
   type KanbanColumnDef,
   type KanbanTask,
+  type TaskSource,
 } from "@/components/kanban/types";
 import { LiveFeed, LiveFeedTitle } from "@/components/live-feed";
 import { ChatPanelToggle } from "@/components/layout/chat-panel-toggle";
@@ -20,9 +21,11 @@ import {
   PageHeaderTitle,
 } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { useAgents } from "@/hooks/useAgents";
 import { useTasks } from "@/hooks/useTasks";
 import type { Task, TaskPriority, TaskRecord, TaskStatus } from "@/lib/types";
 import { useDrawer } from "@/providers/drawer-provider";
+import { cn } from "@/lib/utils";
 
 const BOARD_COLUMN_CONFIG: Array<{
   id: TaskStatus;
@@ -51,6 +54,23 @@ function getRecordString(record: Record<string, unknown> | null, key: string) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function getTaskSource(metadata: Record<string, unknown> | null): TaskSource {
+  const source = getRecordString(metadata, "source");
+  if (source === "session") return "session";
+  if (source === "agent-work-queue") return "work_queue";
+  return "manual";
+}
+
+function getTaskStartedAt(metadata: Record<string, unknown> | null): number | undefined {
+  const startedAt = metadata?.startedAt;
+  if (typeof startedAt === "number" && Number.isFinite(startedAt)) return startedAt;
+  return undefined;
+}
+
+function getTaskSessionKey(metadata: Record<string, unknown> | null): string | undefined {
+  return getRecordString(metadata, "sessionKey");
+}
+
 export function getTaskRuntimeDetails(task: Pick<TaskRecord, "metadata">) {
   const metadata = isRecord(task.metadata) ? task.metadata : null;
   const workQueue = isRecord(metadata?.work_queue) ? metadata.work_queue : null;
@@ -59,6 +79,9 @@ export function getTaskRuntimeDetails(task: Pick<TaskRecord, "metadata">) {
     loopManager:
       getRecordString(workQueue, "loop_manager") ??
       getRecordString(metadata, "loop_manager"),
+    sessionKey: getTaskSessionKey(metadata),
+    source: getTaskSource(metadata),
+    startedAt: getTaskStartedAt(metadata),
     tmuxSession:
       getRecordString(workQueue, "tmux_session") ??
       getRecordString(metadata, "tmux_session"),
@@ -87,6 +110,9 @@ function mapTaskRecordToKanbanTask(task: TaskRecord): KanbanTask {
     loopManager: runtime.loopManager,
     parentTaskId: task.parent_task_id ?? undefined,
     priority: mapTaskPriority(task.priority),
+    sessionKey: runtime.sessionKey,
+    source: runtime.source,
+    startedAt: runtime.startedAt,
     status: task.status,
     subtasks: [],
     title: task.title,
@@ -105,6 +131,9 @@ export function mapTaskToKanbanTask(task: Task): KanbanTask {
     loopManager: runtime.loopManager,
     parentTaskId: task.parent_task_id ?? undefined,
     priority: mapTaskPriority(task.priority),
+    sessionKey: runtime.sessionKey,
+    source: runtime.source,
+    startedAt: runtime.startedAt,
     status: task.status,
     subtasks: task.subtasks.map((subtask) => ({
       assignee: subtask.assignee_agent_id ?? undefined,
@@ -141,12 +170,66 @@ export function buildBoardColumns(tasks: Task[]): KanbanColumnDef[] {
   return BOARD_COLUMN_CONFIG.map((column) => columns.get(column.id)!);
 }
 
+type FilterType = "all" | "live" | "manual" | string;
+
+function getUniqueAgents(tasks: Task[]): Array<{ id: string; label: string }> {
+  const seen = new Map<string, string>();
+  for (const task of tasks) {
+    if (task.assignee_agent_id && !seen.has(task.assignee_agent_id)) {
+      seen.set(task.assignee_agent_id, task.assignee_agent_id);
+    }
+  }
+  return Array.from(seen, ([id, label]) => ({ id, label }));
+}
+
+function filterBoardTasks(tasks: Task[], filter: FilterType): Task[] {
+  if (filter === "all") return tasks;
+  if (filter === "live") {
+    return tasks.filter((task) => {
+      const meta = isRecord(task.metadata) ? task.metadata : null;
+      return getRecordString(meta, "source") === "session";
+    });
+  }
+  if (filter === "manual") {
+    return tasks.filter((task) => {
+      const meta = isRecord(task.metadata) ? task.metadata : null;
+      const source = getRecordString(meta, "source");
+      return source !== "session" && source !== "agent-work-queue";
+    });
+  }
+  // Agent filter: filter is the agent id
+  return tasks.filter((task) => task.assignee_agent_id === filter);
+}
+
+const FILTER_CHIPS: Array<{ id: FilterType; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "live", label: "Live" },
+  { id: "manual", label: "Manual" },
+];
+
 const BoardPage = () => {
   const { boardTasks, error, isLoading, tasks } = useTasks();
+  const { agents } = useAgents();
   const { openDrawer } = useDrawer();
+  const [filter, setFilter] = React.useState<FilterType>("all");
 
-  const columns = React.useMemo(() => buildBoardColumns(boardTasks), [boardTasks]);
+  const agentFilters = React.useMemo(() => getUniqueAgents(boardTasks), [boardTasks]);
+
+  const filteredTasks = React.useMemo(
+    () => filterBoardTasks(boardTasks, filter),
+    [boardTasks, filter],
+  );
+
+  const columns = React.useMemo(() => buildBoardColumns(filteredTasks), [filteredTasks]);
   const planOptions = React.useMemo(() => getNewTaskDialogPlanOptions(tasks), [tasks]);
+
+  const getAgentLabel = React.useCallback(
+    (agentId: string) => {
+      const agent = agents.find((a) => a.id === agentId);
+      return agent ? `${agent.emoji} ${agent.name}` : agentId;
+    },
+    [agents],
+  );
 
   const handleOpenFeed = React.useCallback(() => {
     openDrawer(<LiveFeed className="h-full" />, <LiveFeedTitle />);
@@ -180,13 +263,51 @@ const BoardPage = () => {
         ) : null}
 
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          {/* Filter chips */}
+          <div className="-mx-4 mb-4 overflow-x-auto px-4">
+            <div className="flex items-center gap-2">
+              {FILTER_CHIPS.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setFilter(chip.id)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    filter === chip.id
+                      ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800",
+                  )}
+                >
+                  {chip.label}
+                </button>
+              ))}
+              {agentFilters.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => setFilter(agent.id)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    filter === agent.id
+                      ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800",
+                  )}
+                >
+                  {getAgentLabel(agent.id)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="mb-4 flex items-center justify-between gap-4 text-sm">
             <p className="text-muted-foreground">
               {isLoading && tasks.length === 0
                 ? "Loading tasks..."
-                : boardTasks.length === 0
-                  ? "No tasks yet. Create one to populate the board."
-                  : `${boardTasks.length} task${boardTasks.length === 1 ? "" : "s"} on the board.`}
+                : filteredTasks.length === 0
+                  ? filter === "all"
+                    ? "No tasks yet. Create one to populate the board."
+                    : "No tasks match this filter."
+                  : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"} on the board.`}
             </p>
           </div>
 
