@@ -47,7 +47,7 @@ type SyncResult = {
   updated: number;
 };
 
-const SKIP_KINDS = new Set(["cron", "main", "heartbeat"]);
+const SKIP_KINDS = new Set(["cron", "main", "heartbeat", "chat"]);
 const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const SESSION_STATUS_MAP: Record<string, string> = {
@@ -155,7 +155,28 @@ function getSessionStatus(session: SessionRecord): string | undefined {
 }
 
 function getSessionKind(session: SessionRecord): string | undefined {
-  return getString(session.kind);
+  // Try explicit kind field first
+  const explicit = getString(session.kind);
+  if (explicit) return explicit;
+
+  // Derive kind from sessionKey pattern:
+  // agent:<id>:subagent:<uuid> → subagent
+  // agent:<id>:cron:<uuid> → cron
+  // agent:<id>:telegram:... → chat
+  // agent:<id>:main → main
+  // agent:<id>:heartbeat → heartbeat
+  const key = getSessionKey(session);
+  if (!key) return undefined;
+
+  const parts = key.split(":");
+  if (parts.length < 3) return undefined;
+  const segment = parts[2];
+  if (segment === "subagent") return "subagent";
+  if (segment === "cron") return "cron";
+  if (segment === "main") return "main";
+  if (segment === "heartbeat") return "heartbeat";
+  if (segment === "telegram" || segment === "discord" || segment === "slack" || segment === "whatsapp" || segment === "signal") return "chat";
+  return undefined;
 }
 
 function getSessionTimestamp(session: SessionRecord): number | null {
