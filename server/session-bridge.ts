@@ -352,32 +352,10 @@ export async function syncSessionsToTasks(
     }
   }
 
-  // Mark orphaned session tasks as done
-  for (const [sessionKey, task] of existingSessionTasks) {
-    if (seenSessionKeys.has(sessionKey)) continue;
-    if (task.status === "done") continue;
-
-    const metadata = parseJson(task.metadata);
-    const updatedMeta = isRecord(metadata) ? { ...metadata, sessionStatus: "completed" } : { source: "session", sessionKey, sessionStatus: "completed" };
-
-    const updatedTask = db
-      .prepare(
-        `UPDATE tasks SET status = 'done', completed_at = ?, metadata = ?, updated_at = ?
-         WHERE id = ?
-         RETURNING *`,
-      )
-      .get(
-        task.completed_at ?? now,
-        JSON.stringify(updatedMeta),
-        now,
-        task.id,
-      ) as TaskRow;
-
-    broadcaster.broadcast("task_updated", {
-      task: JSON.parse(JSON.stringify({ ...updatedTask, metadata: updatedMeta })) as Record<string, import("./sse.js").SseEventMap["task_created"]["task"] extends infer T ? T extends T ? T : never : never>,
-    });
-    completed += 1;
-  }
+  // NOTE: Do NOT mark missing sessions as done.
+  // Gateway sessions API returns inconsistent results between polls.
+  // Sessions move to done only when explicitly completed/errored.
+  // Stale tasks (>24h) are filtered by the age check on next sync.
 
   return {
     completed,
