@@ -256,11 +256,18 @@ async function enrichTitle(sessionKey: string, fallbackTitle: string): Promise<s
         }
       }
       
+      // Skip system preamble messages
+      if (text.includes("[Subagent Context]") || text.includes("[System]") || text.length < 10) continue;
+      
       if (text.length > 10) {
-        // Extract first meaningful line as title (skip empty lines)
-        const lines = text.split("\n").filter((l: string) => l.trim().length > 0);
+        // Extract first meaningful line as title (skip empty lines and meta lines)
+        const lines = text.split("\n").filter((l: string) => {
+          const t = l.trim();
+          return t.length > 0 && !t.startsWith("[") && !t.startsWith("#") && !t.startsWith("You are running");
+        });
         let title = lines[0] ?? fallbackTitle;
         // Clean up common prefixes
+        title = title.replace(/^(You are \w+[,.]?\s*the\s+\w+\s+agent\.?\s*)/i, "").trim();
         title = title.replace(/^(You are \w+[,.]?\s*)/i, "").trim();
         if (title.length > 120) title = title.slice(0, 117) + "...";
         if (title.length < 5) return fallbackTitle;
