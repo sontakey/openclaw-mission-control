@@ -221,6 +221,18 @@ function listTasksBySessionKey(db: MissionControlDatabase): Map<string, TaskRow>
   return map;
 }
 
+function deriveKindFromKey(key: string): string | undefined {
+  const parts = key.split(":");
+  if (parts.length < 3) return undefined;
+  const segment = parts[2];
+  if (segment === "subagent") return "subagent";
+  if (segment === "cron") return "cron";
+  if (segment === "main") return "main";
+  if (segment === "heartbeat") return "heartbeat";
+  if (segment === "telegram" || segment === "discord" || segment === "slack" || segment === "whatsapp" || segment === "signal") return "chat";
+  return undefined;
+}
+
 export async function syncSessionsToTasks(
   db: MissionControlDatabase,
   broadcaster: TaskSseBroadcaster,
@@ -241,11 +253,14 @@ export async function syncSessionsToTasks(
     if (!isRecord(rawSession)) continue;
     const session = rawSession as SessionRecord;
 
-    const kind = getSessionKind(session);
-    if (kind && SKIP_KINDS.has(kind)) continue;
-
     const sessionKey = getSessionKey(session);
     if (!sessionKey) continue;
+
+    // Derive kind from sessionKey pattern first, fall back to explicit field
+    const kind = deriveKindFromKey(sessionKey) ?? getSessionKind(session);
+    if (kind && SKIP_KINDS.has(kind)) continue;
+    // Only allow subagent sessions on the board
+    if (kind !== "subagent") continue;
 
     // Skip sessions older than 24 hours
     const ts = getSessionTimestamp(session);
