@@ -1,5 +1,11 @@
 export type SubtaskStatus = "pending" | "in_progress" | "done" | "blocked";
 
+export type TaskArtifact = {
+  label: string;
+  type: "file" | "url";
+  value: string;
+};
+
 export type KanbanSubtask = {
   id: string;
   title: string;
@@ -15,6 +21,7 @@ export type TaskSource = "session" | "work_queue" | "manual";
 
 // Kanban's own task type (isolated from Convex)
 export type KanbanTask = {
+  artifacts?: TaskArtifact[];
   childTasks?: KanbanTask[];
   id: string;
   title: string;

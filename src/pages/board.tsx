@@ -9,6 +9,7 @@ import {
 import {
   type ColumnVariant,
   type KanbanColumnDef,
+  type TaskArtifact,
   type KanbanTask,
   type TaskSource,
 } from "@/components/kanban/types";
@@ -71,6 +72,25 @@ function getTaskSessionKey(metadata: Record<string, unknown> | null): string | u
   return getRecordString(metadata, "sessionKey");
 }
 
+function isTaskArtifact(value: unknown): value is TaskArtifact {
+  return (
+    isRecord(value) &&
+    (value.type === "file" || value.type === "url") &&
+    typeof value.label === "string" &&
+    value.label.trim().length > 0 &&
+    typeof value.value === "string" &&
+    value.value.trim().length > 0
+  );
+}
+
+function getTaskArtifacts(metadata: Record<string, unknown> | null): TaskArtifact[] {
+  if (!Array.isArray(metadata?.artifacts)) {
+    return [];
+  }
+
+  return metadata.artifacts.filter(isTaskArtifact);
+}
+
 export function getTaskRuntimeDetails(task: Pick<TaskRecord, "metadata">) {
   const metadata = isRecord(task.metadata) ? task.metadata : null;
   const workQueue = isRecord(metadata?.work_queue) ? metadata.work_queue : null;
@@ -101,10 +121,12 @@ export function mapTaskPriority(priority: TaskPriority): KanbanTask["priority"] 
 }
 
 function mapTaskRecordToKanbanTask(task: TaskRecord): KanbanTask {
+  const metadata = isRecord(task.metadata) ? task.metadata : null;
   const runtime = getTaskRuntimeDetails(task);
 
   return {
     assignee: task.assignee_agent_id ?? undefined,
+    artifacts: getTaskArtifacts(metadata),
     description: task.description ?? undefined,
     id: task.id,
     loopManager: runtime.loopManager,
@@ -121,10 +143,12 @@ function mapTaskRecordToKanbanTask(task: TaskRecord): KanbanTask {
 }
 
 export function mapTaskToKanbanTask(task: Task): KanbanTask {
+  const metadata = isRecord(task.metadata) ? task.metadata : null;
   const runtime = getTaskRuntimeDetails(task);
 
   return {
     assignee: task.assignee_agent_id ?? undefined,
+    artifacts: getTaskArtifacts(metadata),
     childTasks: task.children?.map(mapTaskRecordToKanbanTask),
     description: task.description ?? undefined,
     id: task.id,

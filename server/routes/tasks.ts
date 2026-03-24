@@ -1,3 +1,6 @@
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute, relative, resolve } from "node:path";
+
 import { Router } from "express";
 import type { Response } from "express";
 
@@ -14,6 +17,8 @@ const TASK_SOURCES = new Set(["session", "work_queue", "manual"]);
 const TASK_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
 const COMMENT_TYPES = new Set(["comment", "status_change", "system"]);
 const SUBTASK_STATUSES = new Set(["pending", "in_progress", "done", "blocked"]);
+const PRD_ALLOWED_ROOT = "/home/ubuntu";
+const MAX_PRD_FILE_SIZE_BYTES = 100 * 1024;
 
 type TaskRow = {
   assignee_agent_id: string | null;
@@ -81,6 +86,12 @@ type ActivityInput = {
   metadata?: Record<string, unknown> | null;
   taskId?: string | null;
   type: string;
+};
+
+type TaskArtifact = {
+  label: string;
+  type: "file" | "url";
+  value: string;
 };
 
 export type TaskSseBroadcaster = {
@@ -217,6 +228,150 @@ function getTaskTmuxSession(task: TaskRow) {
     getRecordString(workQueue, ["tmux_session", "tmuxSession"]) ??
     getRecordString(metadata, ["tmux_session", "tmuxSession"])
   );
+}
+
+function isPathWithinRoot(targetPath: string, rootPath: string) {
+  const relativePath = relative(rootPath, targetPath);
+  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
+function hasParentDirectorySegment(pathValue: string) {
+  return pathValue.split(/[\\/]+/).some((segment) => segment === "..");
+}
+
+function resolveTaskPrdPath(task: TaskRow) {
+  const metadata = getMetadataRecord(task.metadata);
+  const workQueue = isRecord(metadata?.work_queue) ? metadata.work_queue : null;
+  const projectDir = getRecordString(workQueue, ["project_dir", "projectDir"]);
+  const prdFile = getRecordString(workQueue, ["prd_file", "prdFile"]);
+
+  if (!projectDir || !prdFile) {
+    return { path: null };
+  }
+
+  const allowedRoot = resolve(PRD_ALLOWED_ROOT);
+  const resolvedProjectDir = resolve(projectDir);
+  const resolvedPath = resolve(resolvedProjectDir, prdFile);
+
+  if (
+    isAbsolute(prdFile) ||
+    hasParentDirectorySegment(prdFile) ||
+    !isPathWithinRoot(resolvedProjectDir, allowedRoot) ||
+    !isPathWithinRoot(resolvedPath, allowedRoot) ||
+    !isPathWithinRoot(resolvedPath, resolvedProjectDir) ||
+    !resolvedPath.toLowerCase().endsWith(".md")
+  ) {
+    return { error: "Invalid PRD path." };
+  }
+
+  return { path: resolvedPath };
+}
+
+function isTaskArtifact(value: unknown): value is TaskArtifact {
+  return (
+    isRecord(value) &&
+    (value.type === "file" || value.type === "url") &&
+    typeof value.label === "string" &&
+    value.label.trim().length > 0 &&
+    typeof value.value === "string" &&
+    value.value.trim().length > 0
+  );
+}
+
+function addTaskArtifact(
+  artifacts: TaskArtifact[],
+  artifact: TaskArtifact | null,
+) {
+  if (!artifact) {
+    return false;
+  }
+
+  const exists = artifacts.some(
+    (candidate) =>
+      candidate.type === artifact.type &&
+      candidate.label === artifact.label &&
+      candidate.value === artifact.value,
+  );
+
+  if (exists) {
+    return false;
+  }
+
+  artifacts.push(artifact);
+  return true;
+}
+
+function getArtifactIndex(value: unknown) {
+  const normalized = getTrimmedString(value);
+
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const index = Number(normalized);
+  return Number.isSafeInteger(index) ? index : null;
+}
+
+function mergeGeneratedArtifacts(metadata: unknown) {
+  if (!isRecord(metadata)) {
+    return metadata;
+  }
+
+  const workQueue = isRecord(metadata.work_queue) ? metadata.work_queue : null;
+  const deployUrl =
+    getRecordString(workQueue, ["deploy_url", "deployUrl"]) ??
+    getRecordString(metadata, ["deploy_url", "deployUrl"]);
+  const projectDir =
+    getRecordString(workQueue, ["project_dir", "projectDir"]) ??
+    getRecordString(metadata, ["project_dir", "projectDir"]);
+  const prdFile =
+    getRecordString(workQueue, ["prd_file", "prdFile"]) ??
+    getRecordString(metadata, ["prd_file", "prdFile"]);
+
+  if (!deployUrl && !projectDir) {
+    return metadata;
+  }
+
+  const existingArtifacts = Array.isArray(metadata.artifacts)
+    ? metadata.artifacts.filter(isTaskArtifact)
+    : [];
+  const artifacts = [...existingArtifacts];
+
+  addTaskArtifact(
+    artifacts,
+    deployUrl
+      ? {
+          label: "Deploy URL",
+          type: "url",
+          value: deployUrl,
+        }
+      : null,
+  );
+  addTaskArtifact(
+    artifacts,
+    projectDir && prdFile
+      ? {
+          label: "PRD",
+          type: "file",
+          value: resolve(projectDir, prdFile),
+        }
+      : null,
+  );
+  addTaskArtifact(
+    artifacts,
+    projectDir
+      ? {
+          label: "Project directory",
+          type: "file",
+          value: projectDir,
+        }
+      : null,
+  );
+
+  return {
+    ...metadata,
+    artifacts,
+  };
 }
 
 function serializeTask(task: TaskRow) {
@@ -384,11 +539,13 @@ function getTaskDetail(db: MissionControlDatabase, taskId: string) {
     .all(taskId) as CommentRow[];
   const parent = task.parent_task_id ? getTaskSummaryById(db, task.parent_task_id) ?? null : null;
   const children = listTaskSummaries(db, { parentId: task.id });
+  const serializedTask = serializeTaskSummary(task);
 
   return {
-    ...serializeTaskSummary(task),
+    ...serializedTask,
     comments: comments.map(serializeComment),
     children: children.map(serializeTaskSummary),
+    metadata: mergeGeneratedArtifacts(serializedTask.metadata),
     parent: parent ? serializeTaskSummary(parent) : null,
     subtasks: subtasks.map(serializeSubtask),
   };
@@ -509,6 +666,75 @@ export function createTasksRouter({
     }
 
     response.json({ task });
+  });
+
+  router.get("/:id/prd", async (request, response) => {
+    syncWorkQueueToTasks(resolveDb(), { workQueuePath });
+
+    const task = getTaskById(resolveDb(), request.params.id);
+
+    if (!task) {
+      sendNotFound(response);
+      return;
+    }
+
+    const prd = resolveTaskPrdPath(task);
+
+    if (prd.error) {
+      sendBadRequest(response, prd.error);
+      return;
+    }
+
+    if (!prd.path) {
+      response.json({
+        content: null,
+        exists: false,
+        path: null,
+      });
+      return;
+    }
+
+    try {
+      const stats = await stat(prd.path);
+
+      if (!stats.isFile()) {
+        response.json({
+          content: null,
+          exists: false,
+          path: null,
+        });
+        return;
+      }
+
+      if (stats.size > MAX_PRD_FILE_SIZE_BYTES) {
+        response.status(413).json({ error: "PRD file exceeds size limit." });
+        return;
+      }
+
+      const content = await readFile(prd.path, "utf8");
+
+      response.json({
+        content,
+        exists: true,
+        path: prd.path,
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error.code === "ENOENT" || error.code === "ENOTDIR")
+      ) {
+        response.json({
+          content: null,
+          exists: false,
+          path: null,
+        });
+        return;
+      }
+
+      response.status(500).json({ error: "Failed to read PRD file." });
+    }
   });
 
   router.get("/:id/tmux-output", async (request, response) => {
@@ -799,6 +1025,156 @@ export function createTasksRouter({
       event: "task_deleted",
     });
     response.status(204).send();
+  });
+
+  router.post("/:id/artifacts", (request, response) => {
+    const database = resolveDb();
+    const task = getTaskById(database, request.params.id);
+
+    if (!task) {
+      sendNotFound(response);
+      return;
+    }
+
+    const label = getTrimmedString(request.body?.label);
+    const type = getTrimmedString(request.body?.type);
+    const value = getTrimmedString(request.body?.value);
+
+    if (!label) {
+      sendBadRequest(response, "label is required.");
+      return;
+    }
+
+    if (type !== "file" && type !== "url") {
+      sendBadRequest(response, "type must be either file or url.");
+      return;
+    }
+
+    if (!value) {
+      sendBadRequest(response, "value is required.");
+      return;
+    }
+
+    const parsedMetadata = parseJson(task.metadata);
+
+    if (parsedMetadata !== null && !isRecord(parsedMetadata)) {
+      sendBadRequest(response, "Task metadata must be an object.");
+      return;
+    }
+
+    const metadata = parsedMetadata ? { ...parsedMetadata } : {};
+    const artifacts = Array.isArray(metadata.artifacts) ? metadata.artifacts.filter(isTaskArtifact) : [];
+    const artifact: TaskArtifact = { label, type, value };
+    const added = addTaskArtifact(artifacts, artifact);
+
+    if (!added) {
+      const unchangedTask = getTaskDetail(database, task.id);
+
+      if (!unchangedTask) {
+        throw new Error("Task not found after artifact lookup.");
+      }
+
+      response.json({ task: unchangedTask });
+      return;
+    }
+
+    metadata.artifacts = artifacts;
+
+    const result = runInTransaction(database, () => {
+      const updatedAt = Math.floor(Date.now() / 1000);
+
+      database
+        .prepare("UPDATE tasks SET metadata = ?, updated_at = ? WHERE id = ?")
+        .run(JSON.stringify(metadata), updatedAt, task.id);
+
+      const updatedTask = getTaskDetail(database, task.id);
+
+      if (!updatedTask) {
+        throw new Error("Task not found after artifact insert.");
+      }
+
+      const activity = insertActivity(database, {
+        agentId: task.assignee_agent_id ?? task.created_by,
+        message: `Added artifact "${label}" to "${task.title}".`,
+        metadata: { artifact },
+        taskId: task.id,
+        type: "task_updated",
+      });
+
+      return { activity, task: updatedTask };
+    });
+
+    emitMutation(broadcaster, result.activity, {
+      data: { task: toTaskPayload(result.task) },
+      event: "task_updated",
+    });
+    response.status(201).json({ task: result.task });
+  });
+
+  router.delete("/:id/artifacts/:index", (request, response) => {
+    const database = resolveDb();
+    const task = getTaskById(database, request.params.id);
+
+    if (!task) {
+      sendNotFound(response);
+      return;
+    }
+
+    const artifactIndex = getArtifactIndex(request.params.index);
+
+    if (artifactIndex === null) {
+      sendBadRequest(response, "index must be a non-negative integer.");
+      return;
+    }
+
+    const parsedMetadata = parseJson(task.metadata);
+
+    if (parsedMetadata !== null && !isRecord(parsedMetadata)) {
+      sendBadRequest(response, "Task metadata must be an object.");
+      return;
+    }
+
+    const metadata = parsedMetadata ? { ...parsedMetadata } : {};
+    const artifacts = Array.isArray(metadata.artifacts) ? metadata.artifacts.filter(isTaskArtifact) : [];
+    const artifact = artifacts[artifactIndex];
+
+    if (!artifact) {
+      sendNotFound(response, "Artifact not found.");
+      return;
+    }
+
+    artifacts.splice(artifactIndex, 1);
+    metadata.artifacts = artifacts;
+
+    const result = runInTransaction(database, () => {
+      const updatedAt = Math.floor(Date.now() / 1000);
+
+      database
+        .prepare("UPDATE tasks SET metadata = ?, updated_at = ? WHERE id = ?")
+        .run(JSON.stringify(metadata), updatedAt, task.id);
+
+      const updatedTask = getTaskDetail(database, task.id);
+
+      if (!updatedTask) {
+        throw new Error("Task not found after artifact delete.");
+      }
+
+      const activity = insertActivity(database, {
+        agentId: task.assignee_agent_id ?? task.created_by,
+        message: `Removed artifact "${artifact.label}" from "${task.title}".`,
+        metadata: { artifact },
+        taskId: task.id,
+        type: "task_updated",
+      });
+
+      return { activity, task: updatedTask };
+    });
+
+    emitMutation(broadcaster, result.activity, {
+      data: { task: toTaskPayload(result.task) },
+      event: "task_updated",
+    });
+    response.json({ task: result.task });
   });
 
   router.post("/:id/comments", (request, response) => {

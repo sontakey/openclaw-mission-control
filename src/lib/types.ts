@@ -65,6 +65,7 @@ export interface Agent {
   emoji: string;
   id: string;
   lastHeartbeat: number | null;
+  model?: string | null;
   name: string;
   parentId: string | null;
   role: string;

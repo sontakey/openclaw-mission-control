@@ -20,7 +20,9 @@ declare module "lucide-react" {
   export const CircleDot: ComponentType<SVGProps<SVGSVGElement>>;
   export const CircleIcon: ComponentType<SVGProps<SVGSVGElement>>;
   export const Eye: ComponentType<SVGProps<SVGSVGElement>>;
+  export const ExternalLink: ComponentType<SVGProps<SVGSVGElement>>;
   export const FileText: ComponentType<SVGProps<SVGSVGElement>>;
+  export const Folder: ComponentType<SVGProps<SVGSVGElement>>;
   export const GripVerticalIcon: ComponentType<SVGProps<SVGSVGElement>>;
   export const Heart: ComponentType<SVGProps<SVGSVGElement>>;
   export const Inbox: ComponentType<SVGProps<SVGSVGElement>>;

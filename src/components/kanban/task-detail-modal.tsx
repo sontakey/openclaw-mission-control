@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -6,6 +6,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -17,11 +23,16 @@ import {
   Pencil,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  FileText,
+  Folder,
 } from "lucide-react";
 
 import { useTaskTmuxOutput } from "@/hooks/useTaskTmuxOutput";
+import { useTaskPrd } from "@/hooks/useTaskPrd";
 
-import type { KanbanTask } from "./types";
+import type { KanbanTask, TaskArtifact } from "./types";
+import { TaskPrdMarkdown } from "./task-prd-markdown";
 import {
   approveKanbanTask,
   requestKanbanTaskChanges,
@@ -64,6 +75,12 @@ export type TaskDetailModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+export type TaskDetailModalBodyProps = {
+  task: KanbanTask;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
 export type TaskTmuxOutputPanelProps = {
   capturedAt?: number | null;
   error?: string | null;
@@ -73,6 +90,42 @@ export type TaskTmuxOutputPanelProps = {
   session: string;
   status?: KanbanTask["status"];
 };
+
+type TaskPrdPanelProps = {
+  content?: string | null;
+  error?: string | null;
+  exists?: boolean;
+  isLoading?: boolean;
+  path?: string | null;
+};
+
+function isMarkdownArtifact(artifact: TaskArtifact) {
+  return artifact.type === "file" && artifact.value.toLowerCase().endsWith(".md");
+}
+
+function getArtifactActionLabel(artifact: TaskArtifact) {
+  if (artifact.type === "url") {
+    return "Open";
+  }
+
+  if (isMarkdownArtifact(artifact)) {
+    return "View PRD";
+  }
+
+  return "Copy path";
+}
+
+function getArtifactIcon(artifact: TaskArtifact) {
+  if (artifact.type === "url") {
+    return <ExternalLink className="h-4 w-4 text-blue-500" />;
+  }
+
+  if (artifact.label.toLowerCase().includes("directory")) {
+    return <Folder className="h-4 w-4 text-amber-500" />;
+  }
+
+  return <FileText className="h-4 w-4 text-slate-500" />;
+}
 
 export function TaskTmuxOutputPanel({
   capturedAt = null,
@@ -127,16 +180,91 @@ export function TaskTmuxOutputPanel({
   );
 }
 
+function TaskPrdPanel({
+  content = null,
+  error = null,
+  exists = false,
+  isLoading = false,
+  path = null,
+}: TaskPrdPanelProps) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h4 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          Product requirements document
+        </h4>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {path ? path : "Markdown file linked to this task"}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Loading PRD...
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+          Failed to load PRD. {error}
+        </div>
+      ) : !exists ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+          No PRD linked to this task.
+        </div>
+      ) : !content || content.trim().length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+          The linked PRD file is empty.
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/20">
+          <TaskPrdMarkdown content={content} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const TaskDetailModal = ({
   task,
   open,
   onOpenChange,
 }: TaskDetailModalProps) => {
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-xl leading-tight">
+            {task.title}
+          </DialogTitle>
+        </DialogHeader>
+        <TaskDetailModalBody
+          open={open}
+          onOpenChange={onOpenChange}
+          task={task}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export const TaskDetailModalBody = ({
+  task,
+  open,
+  onOpenChange,
+}: TaskDetailModalBodyProps) => {
+  const [activeTab, setActiveTab] = useState<"overview" | "prd">("overview");
+  const [artifactsOpen, setArtifactsOpen] = useState(
+    (task.artifacts?.length ?? 0) > 0,
+  );
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subtasksOpen, setSubtasksOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const artifacts = task.artifacts ?? [];
+  const hasArtifacts = artifacts.length > 0;
 
   const {
     data: tmuxOutput,
@@ -146,14 +274,51 @@ export const TaskDetailModal = ({
     enabled: open && Boolean(task?.tmuxSession),
     taskId: task?.id ?? "",
   });
+  const {
+    data: prd,
+    error: prdError,
+    isLoading: isPrdLoading,
+  } = useTaskPrd({
+    enabled: open && activeTab === "prd" && Boolean(task?.id),
+    open,
+    taskId: task?.id ?? "",
+  });
 
-  if (!task) return null;
+  useEffect(() => {
+    if (open) {
+      setActiveTab("overview");
+    }
+  }, [open, task.id]);
+
+  useEffect(() => {
+    if (!open) {
+      setShowFeedback(false);
+      setFeedback("");
+      setActiveTab("overview");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    setArtifactsOpen(hasArtifacts);
+  }, [hasArtifacts, open, task.id]);
+
   const priority = priorityConfig[task.priority];
   const hasSubtasks = task.subtasks.length > 0;
   const isReview = task.status === "review";
   const doneCount = task.subtasks.filter((st) => st.done).length;
   const totalCount = task.subtasks.length;
   const progressPercent = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
+
+  const handleArtifactClick = (artifact: TaskArtifact) => {
+    if (isMarkdownArtifact(artifact)) {
+      setActiveTab("prd");
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(artifact.value);
+    }
+  };
 
   const handleApprove = async () => {
     setIsSubmitting(true);
@@ -178,25 +343,28 @@ export const TaskDetailModal = ({
     }
   };
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setShowFeedback(false);
-      setFeedback("");
-    }
-    onOpenChange(open);
-  };
-
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-xl leading-tight">
-              {task.title}
-            </DialogTitle>
-          </DialogHeader>
+      <Tabs
+        className="min-h-0 flex-1"
+        onValueChange={(value) => setActiveTab(value as "overview" | "prd")}
+        value={activeTab}
+      >
+        <TabsList variant="line" className="w-full justify-start">
+          <TabsTrigger className="flex-none px-3" value="overview">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger className="flex-none px-3" value="prd">
+            PRD
+          </TabsTrigger>
+        </TabsList>
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+        <TabsContent
+          forceMount
+          value="overview"
+          className="min-h-0 flex-1 overflow-y-auto pr-1"
+        >
+          <div className="space-y-5">
             {/* Priority & Assignee row */}
             <div className="flex items-center gap-2">
               <span
@@ -239,6 +407,82 @@ export const TaskDetailModal = ({
                 )}
               </div>
             )}
+
+            <div>
+              <button
+                type="button"
+                className="mb-2 flex w-full items-center justify-between"
+                onClick={() => setArtifactsOpen(!artifactsOpen)}
+              >
+                <div className="flex items-center gap-1.5">
+                  {artifactsOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+                  )}
+                  <h4 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                    Artifacts
+                  </h4>
+                </div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {hasArtifacts
+                    ? `${artifacts.length} item${artifacts.length === 1 ? "" : "s"}`
+                    : "No artifacts yet"}
+                </span>
+              </button>
+
+              {artifactsOpen ? (
+                hasArtifacts ? (
+                  <ul className="space-y-2">
+                    {artifacts.map((artifact) => {
+                      const content = (
+                        <>
+                          <span className="shrink-0">{getArtifactIcon(artifact)}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {artifact.label}
+                            </span>
+                            <span className="block truncate font-mono text-xs text-slate-500 dark:text-slate-400">
+                              {artifact.value}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {getArtifactActionLabel(artifact)}
+                          </span>
+                        </>
+                      );
+
+                      return (
+                        <li key={`${artifact.type}-${artifact.label}-${artifact.value}`}>
+                          {artifact.type === "url" ? (
+                            <a
+                              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 dark:hover:bg-slate-950/50"
+                              href={artifact.value}
+                              rel="noreferrer noopener"
+                              target="_blank"
+                            >
+                              {content}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 dark:hover:bg-slate-950/50"
+                              onClick={() => handleArtifactClick(artifact)}
+                            >
+                              {content}
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+                    No artifacts yet
+                  </div>
+                )
+              ) : null}
+            </div>
 
             {task.tmuxSession ? (
               <TaskTmuxOutputPanel
@@ -418,8 +662,22 @@ export const TaskDetailModal = ({
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+
+        <TabsContent
+          forceMount
+          value="prd"
+          className="min-h-0 flex-1 overflow-y-auto pr-1"
+        >
+          <TaskPrdPanel
+            content={prd?.content}
+            error={prdError?.message}
+            exists={prd?.exists}
+            isLoading={isPrdLoading}
+            path={prd?.path}
+          />
+        </TabsContent>
+      </Tabs>
     </>
   );
 };

@@ -167,14 +167,14 @@ New tab or section in `task-detail-modal.tsx`:
 
 ## Acceptance Criteria
 
-- [ ] `GET /api/tasks/:id/prd` returns rendered PRD content for tasks with a linked PRD file
-- [ ] PRD content displays as formatted markdown in a "PRD" tab within the task detail modal
-- [ ] Tasks with `deploy_url`, `prd_file`, or `project_dir` in metadata auto-generate artifact entries
-- [ ] `POST /api/tasks/:id/artifacts` adds an artifact to the task
-- [ ] `DELETE /api/tasks/:id/artifacts/:index` removes an artifact
-- [ ] Artifacts section shows in the Overview tab with appropriate icons and click actions
-- [ ] URL artifacts open in a new browser tab when clicked
-- [ ] Path traversal attempts on the PRD endpoint return 400
-- [ ] Modal tabs switch between Overview and PRD without re-fetching data
-- [ ] No regressions to existing board, task detail, tmux output, or agent views
-- [ ] All existing tests pass plus new tests for PRD and artifact endpoints
+- [x] `GET /api/tasks/:id/prd` returns rendered PRD content for tasks with a linked PRD file
+- [x] PRD content displays as formatted markdown in a "PRD" tab within the task detail modal
+- [x] Tasks with `deploy_url`, `prd_file`, or `project_dir` in metadata auto-generate artifact entries
+- [x] `POST /api/tasks/:id/artifacts` adds an artifact to the task
+- [x] `DELETE /api/tasks/:id/artifacts/:index` removes an artifact
+- [x] Artifacts section shows in the Overview tab with appropriate icons and click actions
+- [x] URL artifacts open in a new browser tab when clicked
+- [x] Path traversal attempts on the PRD endpoint return 400
+- [x] Modal tabs switch between Overview and PRD without re-fetching data
+- [x] No regressions to existing board, task detail, tmux output, or agent views
+- [x] All existing tests pass plus new tests for PRD and artifact endpoints

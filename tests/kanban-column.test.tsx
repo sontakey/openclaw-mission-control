@@ -70,7 +70,7 @@ test("KanbanColumn renders plans as plan cards and standalone items as normal ta
   assert.match(html, /1\/2 complete/);
   assert.match(html, /Show children/);
   assert.match(html, /Fix the API route/);
-  assert.match(html, /Medium priority/);
+  assert.match(html, />P3</);
   assert.match(html, /1 subtask/);
   assert.match(html, /2 docs/);
 });

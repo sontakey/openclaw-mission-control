@@ -71,6 +71,25 @@ test("board helpers normalize task priorities and group tasks by status", () => 
       }),
     ],
     id: "task-review",
+    metadata: {
+      artifacts: [
+        {
+          label: "Deploy URL",
+          type: "url",
+          value: "https://deploy.example.com/review",
+        },
+        {
+          label: "PRD",
+          type: "file",
+          value: "/tmp/review/PRD.md",
+        },
+        {
+          label: "",
+          type: "url",
+          value: "https://invalid.example.com",
+        },
+      ],
+    },
     parent_task_id: "plan-launch",
     priority: "urgent",
     status: "review",
@@ -99,6 +118,18 @@ test("board helpers normalize task priorities and group tasks by status", () => 
   assert.equal(kanbanTask.childTasks?.[0]?.subtasks.length, 0);
   assert.equal(kanbanTask.parentTaskId, "plan-launch");
   assert.equal(kanbanTask.priority, "high");
+  assert.deepEqual(kanbanTask.artifacts, [
+    {
+      label: "Deploy URL",
+      type: "url",
+      value: "https://deploy.example.com/review",
+    },
+    {
+      label: "PRD",
+      type: "file",
+      value: "/tmp/review/PRD.md",
+    },
+  ]);
   assert.equal(kanbanTask.subtasks[0]?.done, true);
 
   const columns = buildBoardColumns([reviewTask, inboxTask]);

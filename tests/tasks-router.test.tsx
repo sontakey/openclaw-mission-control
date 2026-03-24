@@ -453,6 +453,435 @@ test("tasks router filters list responses by status, assignee, plan, and parent"
   assert.deepEqual(invalidPlanResponse.body, { error: "Invalid plan filter." });
 });
 
+test("tasks router auto-generates artifacts from work-queue metadata on detail responses", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "task-artifacts",
+      "Ship board bridge",
+      "in_progress",
+      JSON.stringify({
+        artifacts: [
+          {
+            label: "Deploy URL",
+            type: "url",
+            value: "https://deploy.example.com",
+          },
+          {
+            label: "Runbook",
+            type: "url",
+            value: "https://docs.example.com/runbook",
+          },
+        ],
+        source: "agent-work-queue",
+        work_queue: {
+          deploy_url: "https://deploy.example.com",
+          prd_file: "docs/spec.md",
+          project_dir: "/home/ubuntu/Projects/mission-control",
+        },
+        work_queue_id: "queue-1",
+      }),
+      1,
+      1,
+    );
+
+  const response = await requestApp(server.app, {
+    path: "/api/tasks/task-artifacts",
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    (response.body?.task as Record<string, unknown>).metadata,
+    {
+      artifacts: [
+        {
+          label: "Deploy URL",
+          type: "url",
+          value: "https://deploy.example.com",
+        },
+        {
+          label: "Runbook",
+          type: "url",
+          value: "https://docs.example.com/runbook",
+        },
+        {
+          label: "PRD",
+          type: "file",
+          value: "/home/ubuntu/Projects/mission-control/docs/spec.md",
+        },
+        {
+          label: "Project directory",
+          type: "file",
+          value: "/home/ubuntu/Projects/mission-control",
+        },
+      ],
+      source: "agent-work-queue",
+      work_queue: {
+        deploy_url: "https://deploy.example.com",
+        prd_file: "docs/spec.md",
+        project_dir: "/home/ubuntu/Projects/mission-control",
+      },
+      work_queue_id: "queue-1",
+    },
+  );
+});
+
+test("tasks router auto-generates artifacts from top-level task metadata on detail responses", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "task-top-level-artifacts",
+      "Document launch",
+      "review",
+      JSON.stringify({
+        deploy_url: "https://launch.example.com",
+        prd_file: "docs/launch.md",
+        project_dir: "/tmp/launch-project",
+      }),
+      1,
+      1,
+    );
+
+  const response = await requestApp(server.app, {
+    path: "/api/tasks/task-top-level-artifacts",
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    ((response.body?.task as Record<string, unknown>).metadata as Record<string, unknown>).artifacts,
+    [
+      {
+        label: "Deploy URL",
+        type: "url",
+        value: "https://launch.example.com",
+      },
+      {
+        label: "PRD",
+        type: "file",
+        value: "/tmp/launch-project/docs/launch.md",
+      },
+      {
+        label: "Project directory",
+        type: "file",
+        value: "/tmp/launch-project",
+      },
+    ],
+  );
+});
+
+test("tasks router adds artifacts to task metadata and broadcasts updates", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, assignee_agent_id, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "task-add-artifact",
+      "Publish release notes",
+      "review",
+      "agent-7",
+      JSON.stringify({
+        artifacts: [
+          {
+            label: "Runbook",
+            type: "url",
+            value: "https://docs.example.com/runbook",
+          },
+        ],
+        source: "manual",
+      }),
+      10,
+      10,
+    );
+
+  const response = await requestApp(server.app, {
+    body: JSON.stringify({
+      label: "Deployment",
+      type: "url",
+      value: "https://deploy.example.com/release",
+    }),
+    method: "POST",
+    path: "/api/tasks/task-add-artifact/artifacts",
+  });
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(
+    (response.body?.task as Record<string, unknown>).metadata,
+    {
+      artifacts: [
+        {
+          label: "Runbook",
+          type: "url",
+          value: "https://docs.example.com/runbook",
+        },
+        {
+          label: "Deployment",
+          type: "url",
+          value: "https://deploy.example.com/release",
+        },
+      ],
+      source: "manual",
+    },
+  );
+
+  const storedTask = server.db
+    .prepare("SELECT metadata, updated_at FROM tasks WHERE id = ?")
+    .get("task-add-artifact") as { metadata: string; updated_at: number };
+  const storedMetadata = JSON.parse(storedTask.metadata) as Record<string, unknown>;
+  const activities = server.db
+    .prepare("SELECT type, message, metadata FROM activities WHERE task_id = ? ORDER BY rowid ASC")
+    .all("task-add-artifact") as Array<{ metadata: string; message: string; type: string }>;
+
+  assert.deepEqual(storedMetadata, {
+    artifacts: [
+      {
+        label: "Runbook",
+        type: "url",
+        value: "https://docs.example.com/runbook",
+      },
+      {
+        label: "Deployment",
+        type: "url",
+        value: "https://deploy.example.com/release",
+      },
+    ],
+    source: "manual",
+  });
+  assert.ok(storedTask.updated_at >= 10);
+  assert.deepEqual(
+    activities.map((activity) => activity.type),
+    ["task_updated"],
+  );
+  assert.match(activities[0]?.message ?? "", /Added artifact "Deployment"/);
+  assert.deepEqual(JSON.parse(activities[0]?.metadata ?? "null"), {
+    artifact: {
+      label: "Deployment",
+      type: "url",
+      value: "https://deploy.example.com/release",
+    },
+  });
+  assert.deepEqual(
+    server.broadcasts.map((call) => call.event),
+    ["activity", "task_updated"],
+  );
+});
+
+test("tasks router removes artifacts from task metadata and broadcasts updates", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, assignee_agent_id, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "task-delete-artifact",
+      "Publish changelog",
+      "review",
+      "agent-8",
+      JSON.stringify({
+        artifacts: [
+          {
+            label: "Runbook",
+            type: "url",
+            value: "https://docs.example.com/runbook",
+          },
+          {
+            label: "Deployment",
+            type: "url",
+            value: "https://deploy.example.com/release",
+          },
+        ],
+        source: "manual",
+      }),
+      20,
+      20,
+    );
+
+  const response = await requestApp(server.app, {
+    method: "DELETE",
+    path: "/api/tasks/task-delete-artifact/artifacts/1",
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    (response.body?.task as Record<string, unknown>).metadata,
+    {
+      artifacts: [
+        {
+          label: "Runbook",
+          type: "url",
+          value: "https://docs.example.com/runbook",
+        },
+      ],
+      source: "manual",
+    },
+  );
+
+  const storedTask = server.db
+    .prepare("SELECT metadata, updated_at FROM tasks WHERE id = ?")
+    .get("task-delete-artifact") as { metadata: string; updated_at: number };
+  const storedMetadata = JSON.parse(storedTask.metadata) as Record<string, unknown>;
+  const activities = server.db
+    .prepare("SELECT type, message, metadata FROM activities WHERE task_id = ? ORDER BY rowid ASC")
+    .all("task-delete-artifact") as Array<{ metadata: string; message: string; type: string }>;
+
+  assert.deepEqual(storedMetadata, {
+    artifacts: [
+      {
+        label: "Runbook",
+        type: "url",
+        value: "https://docs.example.com/runbook",
+      },
+    ],
+    source: "manual",
+  });
+  assert.ok(storedTask.updated_at >= 20);
+  assert.deepEqual(
+    activities.map((activity) => activity.type),
+    ["task_updated"],
+  );
+  assert.match(activities[0]?.message ?? "", /Removed artifact "Deployment"/);
+  assert.deepEqual(JSON.parse(activities[0]?.metadata ?? "null"), {
+    artifact: {
+      label: "Deployment",
+      type: "url",
+      value: "https://deploy.example.com/release",
+    },
+  });
+  assert.deepEqual(
+    server.broadcasts.map((call) => call.event),
+    ["activity", "task_updated"],
+  );
+});
+
+test("tasks router validates artifact payloads and missing tasks", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run("task-invalid-artifact", "Audit release", "inbox", 1, 1);
+
+  const invalidTypeResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      label: "Deployment",
+      type: "blob",
+      value: "https://deploy.example.com/release",
+    }),
+    method: "POST",
+    path: "/api/tasks/task-invalid-artifact/artifacts",
+  });
+
+  assert.equal(invalidTypeResponse.status, 400);
+  assert.deepEqual(invalidTypeResponse.body, {
+    error: "type must be either file or url.",
+  });
+
+  const missingTaskResponse = await requestApp(server.app, {
+    body: JSON.stringify({
+      label: "Deployment",
+      type: "url",
+      value: "https://deploy.example.com/release",
+    }),
+    method: "POST",
+    path: "/api/tasks/missing-task/artifacts",
+  });
+
+  assert.equal(missingTaskResponse.status, 404);
+  assert.deepEqual(missingTaskResponse.body, {
+    error: "Task not found.",
+  });
+});
+
+test("tasks router validates artifact deletion indexes and missing tasks", async (t) => {
+  const server = await createTestServer();
+  t.after(async () => {
+    server.close();
+  });
+
+  server.db
+    .prepare(
+      `INSERT INTO tasks (id, title, status, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "task-delete-invalid-artifact",
+      "Audit release",
+      "inbox",
+      JSON.stringify({
+        artifacts: [
+          {
+            label: "Deployment",
+            type: "url",
+            value: "https://deploy.example.com/release",
+          },
+        ],
+      }),
+      1,
+      1,
+    );
+
+  const invalidIndexResponse = await requestApp(server.app, {
+    method: "DELETE",
+    path: "/api/tasks/task-delete-invalid-artifact/artifacts/not-a-number",
+  });
+
+  assert.equal(invalidIndexResponse.status, 400);
+  assert.deepEqual(invalidIndexResponse.body, {
+    error: "index must be a non-negative integer.",
+  });
+
+  const missingArtifactResponse = await requestApp(server.app, {
+    method: "DELETE",
+    path: "/api/tasks/task-delete-invalid-artifact/artifacts/3",
+  });
+
+  assert.equal(missingArtifactResponse.status, 404);
+  assert.deepEqual(missingArtifactResponse.body, {
+    error: "Artifact not found.",
+  });
+
+  const missingTaskResponse = await requestApp(server.app, {
+    method: "DELETE",
+    path: "/api/tasks/missing-task/artifacts/0",
+  });
+
+  assert.equal(missingTaskResponse.status, 404);
+  assert.deepEqual(missingTaskResponse.body, {
+    error: "Task not found.",
+  });
+});
+
 test("tasks router syncs work queue items into task list responses", async (t) => {
   const workQueueDir = await mkdtemp(join(tmpdir(), "mission-control-work-queue-"));
   const workQueuePath = join(workQueueDir, "agent-work-queue.json");
