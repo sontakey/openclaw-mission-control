@@ -259,7 +259,7 @@ export const KanbanColumn = ({ column, onTaskClick }: KanbanColumnProps) => {
   return (
     <div
       className={cn(
-        "flex h-full min-w-48 flex-1 flex-col rounded-lg p-2",
+        "flex h-full w-64 shrink-0 flex-col rounded-lg p-2",
         variant.column,
       )}
     >
