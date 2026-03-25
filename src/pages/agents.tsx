@@ -1,6 +1,5 @@
 import React from "react";
 
-import { AgentDetailDrawer } from "@/components/agents/agent-detail-drawer";
 import { AgentGrid, AgentTree } from "@/components/agents/agent-tree";
 import { PageHeader } from "@/components/layout/page-header/page-header";
 import { PageHeaderActions } from "@/components/layout/page-header/page-header-actions";
@@ -9,40 +8,28 @@ import { PageHeaderTitle } from "@/components/layout/page-header/page-header-tit
 import { ChatPanelToggle } from "@/components/layout/chat-panel-toggle";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgents, type AgentsStatus } from "@/hooks/useAgents";
+import type { AgentsStatus } from "@/hooks/useAgents";
 import type { Agent } from "@/lib/types";
+import { useSquad } from "@/providers/squad-provider";
 
 export type AgentViewMode = "grid" | "tree";
 
 export const DEFAULT_AGENT_VIEW_MODE: AgentViewMode = "tree";
 
-const AgentsPage = () => {
-  const { agents, isLoading, status } = useAgents();
-  const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
-
-  const selectedAgent = React.useMemo(
-    () => agents.find((agent) => agent.id === selectedAgentId) ?? null,
-    [agents, selectedAgentId],
-  );
-
-  React.useEffect(() => {
-    if (selectedAgentId && !selectedAgent) {
-      setSelectedAgentId(null);
-    }
-  }, [selectedAgent, selectedAgentId]);
+const AgentsPage = ({
+  onAgentSelect,
+  selectedAgentId,
+}: {
+  onAgentSelect: (agent: Agent) => void;
+  selectedAgentId: string | null;
+}) => {
+  const { agents, isLoading, status } = useSquad();
 
   return (
     <AgentsPageContent
       agents={agents}
-      detailDrawer={
-        <AgentDetailDrawer
-          agent={selectedAgent}
-          onClose={() => setSelectedAgentId(null)}
-          open={selectedAgent !== null}
-        />
-      }
       isLoading={isLoading}
-      onAgentSelect={(agent) => setSelectedAgentId(agent.id)}
+      onAgentSelect={onAgentSelect}
       selectedAgentId={selectedAgentId}
       status={status}
     />
@@ -51,7 +38,6 @@ const AgentsPage = () => {
 
 export const AgentsPageContent = ({
   agents,
-  detailDrawer,
   initialViewMode = DEFAULT_AGENT_VIEW_MODE,
   isLoading,
   onAgentSelect,
@@ -59,7 +45,6 @@ export const AgentsPageContent = ({
   status,
 }: {
   agents: Agent[];
-  detailDrawer?: React.ReactNode;
   initialViewMode?: AgentViewMode;
   isLoading: boolean;
   onAgentSelect?: (agent: Agent) => void;
@@ -140,7 +125,6 @@ export const AgentsPageContent = ({
           )}
         </section>
       </div>
-      {detailDrawer}
     </div>
   );
 };

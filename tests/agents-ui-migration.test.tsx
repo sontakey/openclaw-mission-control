@@ -39,7 +39,12 @@ test("agents ui uses local hooks and utilities instead of Convex squad data", as
     "agents panel should not use api.agents.squad",
   );
 
-  assert.match(page, /useAgents\(\)/, "agents page should use useAgents()");
+  assert.match(page, /useSquad\(\)/, "agents page should use useSquad()");
+  assert.doesNotMatch(
+    page,
+    /useAgents\(\)/,
+    "agents page should not create a second agents polling store",
+  );
   assert.doesNotMatch(
     page,
     /useQuery\(api\.agents\.squad/,

@@ -7,11 +7,14 @@ import { MemoryRouter } from "react-router-dom";
 
 import { AppShell } from "../src/App.tsx";
 import {
+  BoardAttentionNeededSection,
   buildBoardColumns,
+  getBoardAttentionItems,
+  getBoardSummaryStats,
   mapTaskPriority,
   mapTaskToKanbanTask,
 } from "../src/pages/board.tsx";
-import type { Task } from "../src/lib/types.ts";
+import type { Agent, Task } from "../src/lib/types.ts";
 
 function createTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -35,6 +38,24 @@ function createTask(overrides: Partial<Task> = {}): Task {
   };
 }
 
+function createAgent(overrides: Partial<Agent> = {}): Agent {
+  return {
+    children: [],
+    currentActivity: null,
+    currentTask: null,
+    delegatesTo: [],
+    emoji: "🤖",
+    id: "agent-1",
+    lastHeartbeat: Date.now(),
+    name: "Alpha",
+    parentId: null,
+    role: "Operator",
+    sessionKey: "agent:alpha:main",
+    status: "online",
+    ...overrides,
+  };
+}
+
 test("board page renders task actions and empty kanban columns", () => {
   const html = renderToStaticMarkup(
     <MemoryRouter initialEntries={["/"]}>
@@ -45,12 +66,47 @@ test("board page renders task actions and empty kanban columns", () => {
   assert.match(html, />Board</);
   assert.match(html, />New</);
   assert.match(html, />Activity</);
+  assert.match(html, /Active Agents/);
+  assert.match(html, /In Progress/);
+  assert.match(html, /In Review/);
+  assert.match(html, /Completed 24h/);
   assert.match(html, />Inbox</);
   assert.match(html, />Assigned</);
   assert.match(html, />In Progress</);
   assert.match(html, />Review</);
   assert.match(html, />Done</);
   assert.match(html, /No tasks yet\. Create one to populate the board\./);
+  assert.doesNotMatch(html, /Attention Needed/);
+});
+
+test("board summary stats count online agents, active work, and recent completions", () => {
+  const now = Date.UTC(2026, 2, 25, 12, 0, 0);
+  const recentCompletion = Math.floor(now / 1000) - 60;
+  const staleCompletion = Math.floor(now / 1000) - 2 * 24 * 60 * 60;
+
+  const stats = getBoardSummaryStats({
+    agents: [
+      createAgent({ id: "agent-online-1", status: "online" }),
+      createAgent({ id: "agent-online-2", status: "online" }),
+      createAgent({ id: "agent-offline", status: "offline" }),
+    ],
+    now,
+    tasks: [
+      createTask({ id: "task-progress", status: "in_progress" }),
+      createTask({ id: "task-review", status: "review" }),
+      createTask({ completed_at: recentCompletion, id: "task-done-recent", status: "done" }),
+      createTask({ completed_at: staleCompletion, id: "task-done-stale", status: "done" }),
+      createTask({ completed_at: null, id: "task-done-missing-time", status: "done" }),
+      createTask({ id: "task-assigned", status: "assigned" }),
+    ],
+  });
+
+  assert.deepEqual(stats, {
+    activeAgents: 2,
+    completed24h: 1,
+    inProgress: 1,
+    inReview: 1,
+  });
 });
 
 test("board helpers normalize task priorities and group tasks by status", () => {
@@ -144,4 +200,90 @@ test("board helpers normalize task priorities and group tasks by status", () => 
       ["done", 0],
     ],
   );
+});
+
+test("board attention items include failed work queue items and stale review tasks", () => {
+  const now = Date.UTC(2026, 2, 25, 12, 0, 0);
+  const items = getBoardAttentionItems({
+    now,
+    tasks: [
+      createTask({
+        id: "task-failed-queue",
+        metadata: {
+          source: "agent-work-queue",
+          work_queue: {
+            status: "failed",
+          },
+          work_queue_id: "queue-9",
+        },
+        status: "review",
+        title: "Re-run deploy smoke test",
+        updated_at: Math.floor(now / 1000) - 120,
+      }),
+      createTask({
+        id: "task-stale-review",
+        status: "review",
+        title: "Approve release checklist",
+        updated_at: Math.floor(now / 1000) - 3 * 60 * 60,
+      }),
+      createTask({
+        id: "task-fresh-review",
+        status: "review",
+        title: "Fresh review item",
+        updated_at: Math.floor(now / 1000) - 30 * 60,
+      }),
+      createTask({
+        id: "task-running",
+        status: "in_progress",
+        title: "Implement alert card",
+        updated_at: Math.floor(now / 1000) - 5 * 60 * 60,
+      }),
+    ],
+  });
+
+  assert.deepEqual(items, [
+    {
+      id: "task-failed-queue",
+      label: "Failed Queue",
+      note: "Work queue item queue-9 reported a failure.",
+      severity: "red",
+      title: "Re-run deploy smoke test",
+    },
+    {
+      id: "task-stale-review",
+      label: "Review >2h",
+      note: "Task has been waiting in review for more than 2 hours.",
+      severity: "amber",
+      title: "Approve release checklist",
+    },
+  ]);
+});
+
+test("attention section renders only when attention items exist", () => {
+  const html = renderToStaticMarkup(
+    <BoardAttentionNeededSection
+      items={[
+        {
+          id: "task-failed-queue",
+          label: "Failed Queue",
+          note: "Work queue item queue-9 reported a failure.",
+          severity: "red",
+          title: "Re-run deploy smoke test",
+        },
+        {
+          id: "task-stale-review",
+          label: "Review >2h",
+          note: "Task has been waiting in review for more than 2 hours.",
+          severity: "amber",
+          title: "Approve release checklist",
+        },
+      ]}
+    />,
+  );
+
+  assert.match(html, /Attention Needed/);
+  assert.match(html, /Failed Queue/);
+  assert.match(html, /Review &gt;2h/);
+  assert.match(html, /Re-run deploy smoke test/);
+  assert.match(html, /Approve release checklist/);
 });

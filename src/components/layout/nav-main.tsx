@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 
 import {
   SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
@@ -24,6 +26,17 @@ export interface NavItem {
   disabled?: boolean;
 }
 
+const navSectionOrder = ["OVERVIEW", "TOOLS", "SYSTEM"] as const;
+
+const navSectionByUrl: Record<string, (typeof navSectionOrder)[number]> = {
+  "/": "OVERVIEW",
+  "/board": "OVERVIEW",
+  "/agents": "OVERVIEW",
+  "/chat": "TOOLS",
+  "/crons": "TOOLS",
+  "/settings": "SYSTEM",
+};
+
 interface NavMainProps {
   items: NavItem[];
 }
@@ -36,57 +49,75 @@ export const NavMain = ({ items }: NavMainProps) => {
     return pathname.startsWith(url);
   };
 
-  return (
-    <SidebarGroup className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
-      <SidebarMenu>
-        {items.map((item) => {
-          const content = (
-            <>
-              <item.icon />
-              <span>{item.title}</span>
-            </>
-          );
+  const sections = navSectionOrder
+    .map((title) => ({
+      title,
+      items: items.filter((item) => navSectionByUrl[item.url] === title),
+    }))
+    .filter((section) => section.items.length > 0);
 
-          return (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild={!item.onClick && !item.disabled}
-                onClick={item.disabled ? undefined : item.onClick}
-                isActive={!item.disabled && isActive(item.url)}
-                tooltip={
-                  item.badge
-                    ? {
-                        children: (
-                          <>
-                            {item.title}{" "}
-                            <span className="text-background/70 text-xs">
-                              ({item.badge})
-                            </span>
-                          </>
-                        ),
-                      }
-                    : item.title
+  const renderItem = (item: NavItem) => {
+    const content = (
+      <>
+        <item.icon />
+        <span>{item.title}</span>
+      </>
+    );
+
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          asChild={!item.onClick && !item.disabled}
+          onClick={item.disabled ? undefined : item.onClick}
+          isActive={!item.disabled && isActive(item.url)}
+          tooltip={
+            item.badge
+              ? {
+                  children: (
+                    <>
+                      {item.title}{" "}
+                      <span className="text-background/70 text-xs">
+                        ({item.badge})
+                      </span>
+                    </>
+                  ),
                 }
-                className={cn(sidebarMenuButtonActiveStyles, {
-                  "cursor-default opacity-50 hover:bg-transparent":
-                    item.disabled,
-                })}
-              >
-                {item.onClick || item.disabled ? (
-                  content
-                ) : (
-                  <Link to={item.url}>{content}</Link>
-                )}
-              </SidebarMenuButton>
-              {item.badge && (
-                <SidebarMenuBadge className="bg-muted text-muted-foreground! rounded px-1.5 text-[10px] font-medium">
-                  {item.badge}
-                </SidebarMenuBadge>
-              )}
-            </SidebarMenuItem>
-          );
-        })}
-      </SidebarMenu>
-    </SidebarGroup>
+              : item.title
+          }
+          className={cn(sidebarMenuButtonActiveStyles, {
+            "cursor-default opacity-50 hover:bg-transparent": item.disabled,
+          })}
+        >
+          {item.onClick || item.disabled ? (
+            content
+          ) : (
+            <Link to={item.url}>{content}</Link>
+          )}
+        </SidebarMenuButton>
+        {item.badge && (
+          <SidebarMenuBadge className="bg-muted text-muted-foreground! rounded px-1.5 text-[10px] font-medium">
+            {item.badge}
+          </SidebarMenuBadge>
+        )}
+      </SidebarMenuItem>
+    );
+  };
+
+  return (
+    <>
+      {sections.map((section) => (
+        <SidebarGroup
+          key={section.title}
+          className="group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0"
+        >
+          <SidebarGroupLabel className="px-2 text-[10px] font-semibold tracking-[0.18em]">
+            {section.title}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{section.items.map(renderItem)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </>
   );
 };

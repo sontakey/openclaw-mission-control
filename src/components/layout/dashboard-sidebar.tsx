@@ -1,22 +1,30 @@
 import * as React from "react";
 // @ts-expect-error lucide-react type export mismatch (works at runtime)
-import { Bot, Clock3, MessageSquare, Settings, SquareKanban } from "lucide-react";
+import { Bot, Clock3, LayoutDashboard, MessageSquare, Settings, SquareKanban } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import { NavMain, type NavItem } from "./nav-main";
+import { SidebarAgentRoster } from "./sidebar-agent-roster";
 import { isLockedSidebarRoute } from "./sidebar-config";
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
-
+import type { Agent } from "@/lib/types";
+import { useSquad } from "@/providers/squad-provider";
 
 const navItems: NavItem[] = [
   {
-    title: "Board",
+    title: "Dashboard",
     url: "/",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Board",
+    url: "/board",
     icon: SquareKanban,
   },
   {
@@ -41,9 +49,19 @@ const navItems: NavItem[] = [
   },
 ];
 
-export const DashboardSidebar = ({
+type DashboardSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  onAgentSelect?: (agent: Agent) => void;
+  selectedAgentId?: string | null;
+};
+
+export const DashboardSidebarContent = ({
+  agents,
+  onAgentSelect,
+  selectedAgentId,
   ...props
-}: React.ComponentProps<typeof Sidebar>) => {
+}: DashboardSidebarProps & {
+  agents: Agent[];
+}) => {
   const { pathname } = useLocation();
   const hideRail = isLockedSidebarRoute(pathname);
 
@@ -61,8 +79,35 @@ export const DashboardSidebar = ({
       </SidebarHeader>
       <SidebarContent className="overflow-hidden">
         <NavMain items={navItems} />
+        {agents.length > 0 ? (
+          <>
+            <SidebarSeparator />
+            <SidebarAgentRoster
+              agents={agents}
+              onSelectAgent={onAgentSelect}
+              selectedAgentId={selectedAgentId}
+            />
+          </>
+        ) : null}
       </SidebarContent>
       {!hideRail && <SidebarRail />}
     </Sidebar>
+  );
+};
+
+export const DashboardSidebar = ({
+  onAgentSelect,
+  selectedAgentId,
+  ...props
+}: DashboardSidebarProps) => {
+  const { agents } = useSquad();
+
+  return (
+    <DashboardSidebarContent
+      agents={agents}
+      onAgentSelect={onAgentSelect}
+      selectedAgentId={selectedAgentId}
+      {...props}
+    />
   );
 };

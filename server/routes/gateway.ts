@@ -2,13 +2,16 @@ import { Router } from "express";
 
 import {
   getConfig as loadGatewayConfig,
+  getHealth as loadGatewayHealth,
   GATEWAY_TOKEN,
   GATEWAY_URL,
   listCrons as loadGatewayCrons,
+  type GatewayHealth,
 } from "../gateway-client.js";
 
 type CreateGatewayRouterOptions = {
   getConfig?: () => Promise<unknown>;
+  getHealth?: () => Promise<GatewayHealth>;
   listCrons?: () => Promise<unknown>;
 };
 
@@ -207,9 +210,18 @@ function normalizeCron(value: unknown, index: number): GatewayCron | null {
 
 export function createGatewayRouter({
   getConfig = loadGatewayConfig,
+  getHealth = loadGatewayHealth,
   listCrons = loadGatewayCrons,
 }: CreateGatewayRouterOptions = {}) {
   const router = Router();
+
+  router.get("/health", async (_request, response) => {
+    try {
+      response.json(await getHealth());
+    } catch {
+      response.status(502).json({ error: "Failed to load gateway health." });
+    }
+  });
 
   router.get("/config", async (_request, response) => {
     try {

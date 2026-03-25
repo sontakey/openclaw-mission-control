@@ -165,3 +165,33 @@ test("gateway convenience wrappers invoke the expected tools and defaults", asyn
     ],
   );
 });
+
+test("getHealth measures latency and returns connected gateway metadata", async () => {
+  const calls = mockFetch([{ ok: true, tool: "gateway" }]);
+
+  const health = await gatewayClient.getHealth();
+
+  assert.equal(health.hasToken, true);
+  assert.equal(health.status, "connected");
+  assert.equal(health.url, "http://127.0.0.1:18789");
+  assert.equal(typeof health.latencyMs, "number");
+  assert.ok(Number.isFinite(health.latencyMs));
+  assert.ok(health.latencyMs >= 0);
+  assert.deepEqual(
+    calls.map((call) => ({
+      input: call.input,
+      body: parseCallBody(call),
+    })),
+    [
+      {
+        input: "http://127.0.0.1:18789/tools/invoke",
+        body: {
+          tool: "gateway",
+          args: {
+            action: "config.get",
+          },
+        },
+      },
+    ],
+  );
+});

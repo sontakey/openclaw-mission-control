@@ -90,10 +90,25 @@ test("gateway router returns normalized config and cron payloads", async () => {
         ],
       },
     }),
+    getHealth: async () => ({
+      hasToken: Boolean(GATEWAY_TOKEN),
+      latencyMs: 42,
+      status: "connected",
+      url: GATEWAY_URL,
+    }),
   });
 
+  const healthResponse = await requestApp(app, { path: "/api/gateway/health" });
   const configResponse = await requestApp(app, { path: "/api/gateway/config" });
   const cronsResponse = await requestApp(app, { path: "/api/gateway/crons" });
+
+  assert.equal(healthResponse.status, 200);
+  assert.deepEqual(healthResponse.body, {
+    hasToken: Boolean(GATEWAY_TOKEN),
+    latencyMs: 42,
+    status: "connected",
+    url: GATEWAY_URL,
+  });
 
   assert.equal(configResponse.status, 200);
   assert.deepEqual(configResponse.body, {
@@ -130,13 +145,22 @@ test("gateway router returns 502 when gateway calls fail", async () => {
     getConfig: async () => {
       throw new Error("boom");
     },
+    getHealth: async () => {
+      throw new Error("boom");
+    },
     listCrons: async () => {
       throw new Error("boom");
     },
   });
 
+  const healthResponse = await requestApp(app, { path: "/api/gateway/health" });
   const configResponse = await requestApp(app, { path: "/api/gateway/config" });
   const cronsResponse = await requestApp(app, { path: "/api/gateway/crons" });
+
+  assert.equal(healthResponse.status, 502);
+  assert.deepEqual(healthResponse.body, {
+    error: "Failed to load gateway health.",
+  });
 
   assert.equal(configResponse.status, 502);
   assert.deepEqual(configResponse.body, {

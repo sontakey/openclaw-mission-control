@@ -15,13 +15,18 @@ test("app shell renders Mission Control sidebar navigation on board", () => {
   );
 
   assert.match(html, /Mission Control/);
-  assert.match(html, />Board</);
+  assert.match(html, />Dashboard</);
+  assert.match(html, /href="\/board"/);
   assert.match(html, />Agents</);
   assert.match(html, /href="\/chat"/);
   assert.match(html, />Crons</);
   assert.match(html, />Settings</);
   assert.match(html, /Chat/);
   assert.match(html, /Review incoming work, track delivery, and keep the live activity stream close\./);
+  assert.match(html, /Active Agents/);
+  assert.match(html, /In Progress/);
+  assert.match(html, /In Review/);
+  assert.match(html, /Completed 24h/);
   assert.match(html, />Inbox</);
   assert.match(html, />Assigned</);
   assert.match(html, />In Progress</);
@@ -38,7 +43,8 @@ test("settings route keeps the top-level sidebar navigation", () => {
   );
 
   assert.match(html, /Mission Control/);
-  assert.match(html, />Board</);
+  assert.match(html, />Dashboard</);
+  assert.match(html, /href="\/board"/);
   assert.match(html, />Agents</);
   assert.match(html, /href="\/chat"/);
   assert.match(html, />Crons</);
@@ -60,7 +66,8 @@ test("agents route keeps the top-level sidebar navigation", () => {
   );
 
   assert.match(html, /Mission Control/);
-  assert.match(html, />Board</);
+  assert.match(html, />Dashboard</);
+  assert.match(html, /href="\/board"/);
   assert.match(html, />Agents</);
   assert.match(html, /href="\/chat"/);
   assert.match(html, />Crons</);
@@ -77,7 +84,8 @@ test("chat route renders a dedicated chat page inside the shared shell", () => {
   );
 
   assert.match(html, /Mission Control/);
-  assert.match(html, />Board</);
+  assert.match(html, />Dashboard</);
+  assert.match(html, /href="\/board"/);
   assert.match(html, />Agents</);
   assert.match(html, /href="\/chat"/);
   assert.match(html, />Crons</);
@@ -95,7 +103,8 @@ test("crons route renders dedicated cron jobs page inside the shell", () => {
   );
 
   assert.match(html, /Mission Control/);
-  assert.match(html, />Board</);
+  assert.match(html, />Dashboard</);
+  assert.match(html, /href="\/board"/);
   assert.match(html, />Agents</);
   assert.match(html, />Crons</);
   assert.match(html, />Settings</);

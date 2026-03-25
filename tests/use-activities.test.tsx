@@ -178,3 +178,28 @@ test("ActivitiesStore loads the initial feed and prepends SSE activity updates",
 
   store.stop();
 });
+
+test("ActivitiesStore trims the initial feed to the requested limit", async () => {
+  const api: ActivitiesApi = {
+    async listActivities() {
+      return [
+        createActivity({ id: "activity-3", message: 'Created task "Task 03".' }),
+        createActivity({ id: "activity-2", message: 'Created task "Task 02".' }),
+        createActivity({ id: "activity-1", message: 'Created task "Task 01".' }),
+      ];
+    },
+  };
+  const store = new ActivitiesStore({
+    api,
+    limit: 2,
+  });
+
+  await store.start();
+
+  assert.deepEqual(
+    store.getSnapshot().activities?.map((activity) => activity.id),
+    ["activity-3", "activity-2"],
+  );
+
+  store.stop();
+});

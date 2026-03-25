@@ -61,6 +61,10 @@ function normalizeActivity(activity: Activity): FeedActivity {
   };
 }
 
+function normalizeActivities(activities: Activity[], limit: number) {
+  return activities.map(normalizeActivity).slice(0, limit);
+}
+
 function mergeActivities(
   currentActivities: FeedActivity[] | undefined,
   nextActivity: FeedActivity,
@@ -185,8 +189,9 @@ export class ActivitiesStore {
     });
 
     try {
-      const activities = (await this.api.listActivities(this.limit)).map(
-        normalizeActivity,
+      const activities = normalizeActivities(
+        await this.api.listActivities(this.limit),
+        this.limit,
       );
 
       if (!this.started || requestId !== this.requestId) {

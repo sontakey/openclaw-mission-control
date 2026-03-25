@@ -196,20 +196,20 @@ Right column (~40%): **Agent Status**
 
 ## Acceptance Criteria
 
-- [ ] Sidebar shows agent roster with emoji, name, and green/red status dot below nav items
-- [ ] Sidebar agent roster updates in real-time (30s poll, same as agents page)
-- [ ] Clicking a sidebar agent opens the agent detail drawer
-- [ ] Collapsed sidebar shows agent emoji with status dot overlay
-- [ ] Gateway health chip visible in header on every page
-- [ ] Gateway chip shows green "Gateway" when connected, red "Disconnected" when not
-- [ ] `GET /api/gateway/health` endpoint returns gateway status with latency
-- [ ] Dashboard home page is the default landing route (`/`)
-- [ ] Dashboard shows 4 summary stat cards (Active Agents, In Progress, In Review, Completed 24h)
-- [ ] Dashboard shows recent activity feed (last 10 items)
-- [ ] Dashboard shows agent status list with current task info
-- [ ] Dashboard shows "Attention Needed" section when stuck/failed items exist
-- [ ] Board page accessible at `/board` 
-- [ ] Sidebar nav grouped under section headers (OVERVIEW, TOOLS, SYSTEM)
-- [ ] Sidebar nav includes "Dashboard" item with LayoutDashboard icon at top
-- [ ] No regressions to existing Board, Agents, Chat, Crons, or Settings pages
-- [ ] All existing tests pass plus new tests for added endpoints and components
+- [x] Sidebar shows agent roster with emoji, name, and green/red status dot below nav items
+- [x] Sidebar agent roster updates in real-time (30s poll, same as agents page)
+- [x] Clicking a sidebar agent opens the agent detail drawer
+- [x] Collapsed sidebar shows agent emoji with status dot overlay
+- [x] Gateway health chip visible in header on every page
+- [x] Gateway chip shows green "Gateway" when connected, red "Disconnected" when not
+- [x] `GET /api/gateway/health` endpoint returns gateway status with latency
+- [x] Dashboard home page is the default landing route (`/`)
+- [x] Dashboard shows 4 summary stat cards (Active Agents, In Progress, In Review, Completed 24h)
+- [x] Dashboard shows recent activity feed (last 10 items)
+- [x] Dashboard shows agent status list with current task info
+- [x] Dashboard shows "Attention Needed" section when stuck/failed items exist
+- [x] Board page accessible at `/board` 
+- [x] Sidebar nav grouped under section headers (OVERVIEW, TOOLS, SYSTEM)
+- [x] Sidebar nav includes "Dashboard" item with LayoutDashboard icon at top
+- [x] No regressions to existing Board, Agents, Chat, Crons, or Settings pages
+- [x] All existing tests pass plus new tests for added endpoints and components

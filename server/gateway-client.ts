@@ -2,6 +2,12 @@ export const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL ?? "http://127.0.0.1
 export const GATEWAY_TOKEN = process.env.OPENCLAW_TOKEN;
 
 type GatewayRequestBody = Record<string, unknown>;
+export type GatewayHealth = {
+  hasToken: boolean;
+  latencyMs: number;
+  status: "connected";
+  url: string;
+};
 
 async function gatewayPost<T>(endpoint: string, body: GatewayRequestBody): Promise<T> {
   const response = await fetch(`${GATEWAY_URL}${endpoint}`, {
@@ -42,4 +48,17 @@ export function listCrons<T = unknown>() {
 
 export function getConfig<T = unknown>() {
   return invokeTool<T>("gateway", { action: "config.get" });
+}
+
+export async function getHealth(): Promise<GatewayHealth> {
+  const startedAt = Date.now();
+
+  await getConfig();
+
+  return {
+    hasToken: Boolean(GATEWAY_TOKEN),
+    latencyMs: Math.max(0, Date.now() - startedAt),
+    status: "connected",
+    url: GATEWAY_URL,
+  };
 }
