@@ -29,6 +29,7 @@ import { useDrawer } from "@/providers/drawer-provider";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/types";
 import { BoardAgentStatusList } from "@/components/agents/board-agent-status-list";
+import { UsagePanel } from "@/components/usage/usage-panel";
 
 const BOARD_COLUMN_CONFIG: Array<{
   id: TaskStatus;
@@ -488,6 +489,8 @@ const BoardPage = () => {
         <BoardAttentionNeededSection items={attentionItems} />
 
         <BoardAgentStatusList agents={agents} />
+
+        <UsagePanel />
 
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-900">
           <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
