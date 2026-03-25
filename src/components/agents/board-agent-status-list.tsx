@@ -41,7 +41,7 @@ function getTaskStatusTone(status: string) {
 
 export const BoardAgentStatusList = ({ agents }: { agents: Agent[] }) => {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
         <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
           Agent Status
@@ -69,7 +69,7 @@ export const BoardAgentStatusList = ({ agents }: { agents: Agent[] }) => {
             return (
               <li
                 key={agent.id}
-                className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60"
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700/50 dark:bg-slate-800/50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

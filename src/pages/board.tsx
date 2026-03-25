@@ -464,7 +464,7 @@ const BoardPage = () => {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-900"
             >
               <p className="text-xs font-medium tracking-[0.16em] text-slate-500 uppercase dark:text-slate-400">
                 {stat.label}
@@ -472,7 +472,7 @@ const BoardPage = () => {
               <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">
                 {stat.value}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 whitespace-normal text-xs text-slate-500 dark:text-slate-400">
                 {stat.description}
               </p>
             </div>
@@ -489,7 +489,7 @@ const BoardPage = () => {
 
         <BoardAgentStatusList agents={agents} />
 
-        <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-900">
           <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -511,7 +511,7 @@ const BoardPage = () => {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-900">
           {/* Filter chips */}
           <div className="-mx-4 mb-4 overflow-x-auto px-4">
             <div className="flex items-center gap-2">

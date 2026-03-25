@@ -77,6 +77,7 @@ test("agents router merges configured agents with live sessions", async () => {
   let configCalls = 0;
   let sessionCalls = 0;
   const app = createTestApp({
+    now: () => 1_700_004_000_000,
     getConfig: async () => {
       configCalls += 1;
 
@@ -316,7 +317,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       parentId: "anton",
       role: "Engineer",
       sessionKey: null,
-      status: "offline",
+      status: "online",
     },
     {
       children: ["marv", "harry", "kevin", "penny", "voice"],
@@ -368,7 +369,7 @@ test("agents router adds hierarchy fields from configured subagents", async () =
       parentId: "anton",
       role: "Research",
       sessionKey: null,
-      status: "offline",
+      status: "online",
     },
     {
       children: [],
@@ -388,6 +389,99 @@ test("agents router adds hierarchy fields from configured subagents", async () =
     assert.ok("currentTask" in agent);
     assertCurrentTaskShape(agent.currentTask);
   });
+});
+
+test("agents router returns offline for stale sessions and attributes labeled subagents", async () => {
+  const now = Date.parse("2026-03-25T14:12:00.000Z");
+  const freshHeartbeat = now - 5 * 60 * 1000;
+  const staleHeartbeat = now - 25 * 60 * 1000;
+
+  const app = createTestApp({
+    getConfig: async () => ({
+      agents: {
+        list: [
+          {
+            default: true,
+            id: "anton",
+            name: "Anton",
+            role: "Orchestrator",
+          },
+          {
+            id: "penny",
+            name: "Penny",
+            role: "Research",
+          },
+          {
+            id: "dexter",
+            name: "Dexter",
+            role: "DevOps",
+          },
+        ],
+      },
+    }),
+    listSessions: async () => ({
+      sessions: [
+        {
+          currentActivity: "Delegated research",
+          label: "penny-autoresearchclaw-ppg",
+          lastActivity: freshHeartbeat,
+          sessionKey: "agent:anton:subagent:123",
+        },
+        {
+          currentActivity: "Old deploy logs",
+          lastActivity: staleHeartbeat,
+          sessionKey: "agent:dexter:main",
+        },
+      ],
+    }),
+    now: () => now,
+  });
+
+  const response = await requestApp(app, { path: "/api/agents" });
+  const agents = response.body as Array<Record<string, unknown>>;
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(agents.map(stripCurrentTask), [
+    {
+      children: ["penny", "dexter"],
+      currentActivity: null,
+      delegatesTo: [],
+      emoji: "🔬",
+      id: "anton",
+      lastHeartbeat: null,
+      name: "Anton",
+      parentId: null,
+      role: "Orchestrator",
+      sessionKey: null,
+      status: "offline",
+    },
+    {
+      children: [],
+      currentActivity: "Delegated research",
+      delegatesTo: [],
+      emoji: "🎯",
+      id: "penny",
+      lastHeartbeat: freshHeartbeat,
+      name: "Penny",
+      parentId: "anton",
+      role: "Research",
+      sessionKey: "agent:anton:subagent:123",
+      status: "online",
+    },
+    {
+      children: [],
+      currentActivity: "Old deploy logs",
+      delegatesTo: [],
+      emoji: "⚖️",
+      id: "dexter",
+      lastHeartbeat: staleHeartbeat,
+      name: "Dexter",
+      parentId: "anton",
+      role: "DevOps",
+      sessionKey: "agent:dexter:main",
+      status: "online",
+    },
+  ]);
 });
 
 test("agents router caches gateway data for 30 seconds", async () => {

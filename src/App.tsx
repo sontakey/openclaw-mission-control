@@ -60,7 +60,7 @@ function AppLayout() {
             <GatewayHealthChip />
           </header>
           <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 overflow-auto bg-slate-50 p-4 text-slate-900 sm:p-6 dark:bg-slate-900 dark:text-slate-50">
+            <main className="min-w-0 w-full flex-1 overflow-auto bg-slate-50 p-4 text-slate-900 sm:p-6 dark:bg-slate-950 dark:text-slate-50">
               <Routes>
                 <Route path="/" element={<BoardPage />} />
                 <Route path="/board" element={<BoardPage />} />

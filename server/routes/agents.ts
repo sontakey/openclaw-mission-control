@@ -5,6 +5,7 @@ import { getDatabase } from "../db.js";
 import { getConfig, listSessions } from "../gateway-client.js";
 
 const DEFAULT_CACHE_TTL_MS = 30_000;
+const ONLINE_THRESHOLD_MS = 30 * 60 * 1000;
 
 type AgentStatus = "online" | "offline";
 
@@ -254,6 +255,32 @@ function getAgentIdFromSessionKey(sessionKey: string | null) {
   return parts.length >= 3 && parts[1] ? parts[1] : null;
 }
 
+function getAgentIdFromSessionLabel(label: string | null, knownAgentIds: ReadonlySet<string>) {
+  if (!label) {
+    return null;
+  }
+
+  const normalizedLabel = label.trim().toLowerCase();
+
+  for (const agentId of knownAgentIds) {
+    const normalizedAgentId = agentId.toLowerCase();
+
+    if (normalizedLabel === normalizedAgentId || normalizedLabel.startsWith(`${normalizedAgentId}-`)) {
+      return agentId;
+    }
+  }
+
+  return null;
+}
+
+function deriveStatusFromHeartbeat(lastHeartbeat: number | null, currentTime: number) {
+  if (!lastHeartbeat || currentTime - lastHeartbeat > ONLINE_THRESHOLD_MS) {
+    return "offline" satisfies AgentStatus;
+  }
+
+  return "online" satisfies AgentStatus;
+}
+
 // Default emoji palette for agents without configured emojis
 // Cycles through these based on agent name hash — no hardcoded agent IDs
 const DEFAULT_EMOJI_PALETTE = ["🤖", "🔧", "📢", "🧪", "🖥️", "📝", "⚖️", "💰", "🔬", "🗣️", "🎯", "🎨", "📊", "🔍"];
@@ -398,14 +425,17 @@ function getSessionList(value: unknown) {
   return [];
 }
 
-function normalizeSession(value: unknown): NormalizedSession | null {
+function normalizeSession(value: unknown, knownAgentIds: ReadonlySet<string>): NormalizedSession | null {
   if (!isRecord(value)) {
     return null;
   }
 
   const sessionKey = getString(value, ["sessionKey", "session_key", "key"]) ?? null;
+  const label = getString(value, ["label", "name", "title"]) ?? null;
   const nestedAgent = isRecord(value.agent) ? value.agent : null;
+  const agentIdFromLabel = getAgentIdFromSessionLabel(label, knownAgentIds);
   const agentId =
+    agentIdFromLabel ??
     getString(value, ["agentId", "agent_id"]) ??
     (nestedAgent ? getString(nestedAgent, ["id", "agentId", "agent_id"]) : undefined) ??
     getAgentIdFromSessionKey(sessionKey);
@@ -549,11 +579,13 @@ function buildSnapshot(
   configValue: unknown,
   sessionsValue: unknown,
   db: MissionControlDatabase,
+  currentTime: number,
 ) {
   const agentConfigs = getAgentConfigs(configValue);
   const hierarchy = buildAgentHierarchy(agentConfigs);
+  const knownAgentIds = new Set(agentConfigs.map((agent) => agent.id));
   const sessions = getSessionList(sessionsValue)
-    .map(normalizeSession)
+    .map((session) => normalizeSession(session, knownAgentIds))
     .filter((session): session is NormalizedSession => session !== null);
   const sessionsByAgent = new Map<string, NormalizedSession[]>();
 
@@ -593,11 +625,14 @@ function buildSnapshot(
   const agents = agentConfigs.map((agent) => {
     const agentSessions = sessionsByAgent.get(agent.id) ?? [];
     const primarySession = selectPrimarySession(agentSessions);
+    const currentTask = activeTasksByAgent.get(agent.id) ?? null;
+    const heartbeatStatus = deriveStatusFromHeartbeat(primarySession?.lastHeartbeat ?? null, currentTime);
+    const status: AgentStatus = currentTask?.status === "in_progress" ? "online" : heartbeatStatus;
 
     return {
       children: [...(hierarchy.childrenByAgent.get(agent.id) ?? [])],
       currentActivity: primarySession?.currentActivity ?? null,
-      currentTask: activeTasksByAgent.get(agent.id) ?? null,
+      currentTask,
       delegatesTo: [...agent.delegatesTo],
       emoji: agent.emoji,
       id: agent.id,
@@ -606,7 +641,7 @@ function buildSnapshot(
       parentId: hierarchy.parentByAgent.get(agent.id) ?? null,
       role: agent.role,
       sessionKey: primarySession?.sessionKey ?? agent.sessionKey,
-      status: agentSessions.length > 0 ? "online" : "offline",
+      status,
     } satisfies AgentSummary;
   });
 
@@ -645,7 +680,7 @@ export function createAgentsRouter({
     }
 
     const [configValue, sessionsValue] = await Promise.all([loadConfig(), loadSessions()]);
-    const nextSnapshot = buildSnapshot(configValue, sessionsValue, resolveDb());
+    const nextSnapshot = buildSnapshot(configValue, sessionsValue, resolveDb(), currentTime);
 
     snapshot = {
       ...nextSnapshot,
