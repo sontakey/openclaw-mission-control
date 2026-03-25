@@ -7,8 +7,9 @@
 See every agent, manage every task, track everything in real-time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![OpenClaw](https://img.shields.io/badge/OpenClaw-Compatible-FF4500?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiAyMmgyMEwxMiAyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://github.com/openclaw/openclaw)
+[![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Compatible-FF4500)](https://github.com/openclaw/openclaw)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [Quick Start](#-quick-start) · [Screenshots](#-screenshots) · [Features](#-features) · [How It Works](#-how-it-works) · [Configuration](#-configuration) · [FAQ](#-faq)
@@ -57,6 +58,14 @@ View your gateway connection status, instance details, and every scheduled cron 
 </td>
 </tr>
 </table>
+
+---
+
+## 📋 Prerequisites
+
+- **Node.js 18+** — [Download](https://nodejs.org/)
+- **OpenClaw** running on the same machine (or accessible via network)
+- **Gateway auth token** from your OpenClaw instance
 
 ---
 
@@ -386,6 +395,15 @@ sudo systemctl restart mission-control  # Linux only
 
 ---
 
+## Troubleshooting
+
+- **"Connection refused"**: OpenClaw Gateway is not running, or `OPENCLAW_GATEWAY_URL` points to the wrong host or port.
+- **"401 Unauthorized"**: `OPENCLAW_TOKEN` is missing or incorrect.
+- **"Cannot GET /"**: Run `npm run build` first so the server can serve the compiled frontend from `dist/`.
+- **Agent shows offline**: The agent needs an active session within the last 30 minutes, or an `in_progress` task.
+
+---
+
 ## ❓ FAQ
 
 ### Does this work with any OpenClaw instance?
@@ -449,6 +467,6 @@ MIT
 
 <div align="center">
 
-Built for [OpenClaw](https://github.com/openclaw/openclaw) · Inspired by [Clawe](https://github.com/getclawe/clawe)
+Built for [OpenClaw](https://github.com/openclaw/openclaw)
 
 </div>

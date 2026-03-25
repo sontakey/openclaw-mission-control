@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Mission Control — Quick Install Script
-# Usage: curl -fsSL https://raw.githubusercontent.com/sontakey/mission-control/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/sontakey/openclaw-mission-control/main/install.sh | bash
 
-REPO_URL="${MISSION_CONTROL_REPO:-https://github.com/sontakey/mission-control.git}"
+REPO_URL="${MISSION_CONTROL_REPO:-https://github.com/sontakey/openclaw-mission-control.git}"
 INSTALL_DIR="${MISSION_CONTROL_DIR:-$HOME/mission-control}"
 PORT="${MISSION_CONTROL_PORT:-3100}"
 GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://127.0.0.1:18789}"

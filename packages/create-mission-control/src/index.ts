@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
-const REPO_URL = "https://github.com/sontakey/mission-control.git";
+const REPO_URL = "https://github.com/sontakey/openclaw-mission-control.git";
 const DEFAULT_PORT = 3100;
 const DEFAULT_GATEWAY_URL = "http://127.0.0.1:18789";
 const SERVICE_NAME = "mission-control";
