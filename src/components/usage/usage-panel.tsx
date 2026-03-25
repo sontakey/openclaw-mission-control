@@ -5,6 +5,7 @@ import { type UsagePeriod, useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 
 type UsagePeriodLabel = "24h" | "3d" | "7d" | "30d";
+type BreakdownView = "agent" | "model";
 
 const PERIOD_OPTIONS: Array<{ label: UsagePeriodLabel }> = [
   { label: "24h" },
@@ -43,22 +44,34 @@ export function UsagePanel() {
   const { agents } = useAgents();
   const { data, isLoading } = useUsage();
   const [selectedPeriodLabel, setSelectedPeriodLabel] = React.useState<UsagePeriodLabel>("24h");
+  const [breakdownView, setBreakdownView] = React.useState<BreakdownView>("agent");
 
   const selectedPeriod = React.useMemo(
     () => getSelectedPeriod(data?.periods, selectedPeriodLabel),
     [data?.periods, selectedPeriodLabel],
   );
 
-  const rows = React.useMemo(() => {
+  const agentRows = React.useMemo(() => {
     if (!selectedPeriod) {
       return [];
     }
 
     return selectedPeriod.byAgent.map((entry) => ({
       ...entry,
-      agentName: getAgentName(entry.agentId, agents),
+      displayName: getAgentName(entry.agentId, agents),
     }));
   }, [agents, selectedPeriod]);
+
+  const modelRows = React.useMemo(() => {
+    if (!selectedPeriod?.byModel) {
+      return [];
+    }
+
+    return selectedPeriod.byModel.map((entry) => ({
+      ...entry,
+      displayName: entry.model,
+    }));
+  }, [selectedPeriod]);
 
   const summaryItems = selectedPeriod
     ? [
@@ -77,6 +90,9 @@ export function UsagePanel() {
       ]
     : [];
 
+  const activeRows = breakdownView === "agent" ? agentRows : modelRows;
+  const breakdownLabel = breakdownView === "agent" ? "Agent" : "Model";
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
@@ -86,7 +102,7 @@ export function UsagePanel() {
               Token Usage
             </h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Aggregate token consumption and estimated spend by agent.
+              Aggregate token consumption and estimated spend.
             </p>
           </div>
 
@@ -143,26 +159,45 @@ export function UsagePanel() {
               ))}
             </div>
 
-            {rows.length === 0 ? (
+            {/* Breakdown view toggle */}
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700/50 dark:bg-slate-800/30">
+              {(["agent", "model"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setBreakdownView(view)}
+                  className={cn(
+                    "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    breakdownView === view
+                      ? "bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-slate-50"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                  )}
+                >
+                  By {view.charAt(0).toUpperCase() + view.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {activeRows.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-sm text-slate-500 dark:border-slate-700/50 dark:bg-slate-800/30 dark:text-slate-400">
                 No tracked usage for the selected period.
               </div>
             ) : (
               <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700/50">
                 <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium tracking-[0.18em] text-slate-500 uppercase dark:border-slate-700/50 dark:bg-slate-800/60 dark:text-slate-400">
-                  <span>Agent</span>
+                  <span>{breakdownLabel}</span>
                   <span>Tokens</span>
                   <span>Cost</span>
                   <span>Sessions</span>
                 </div>
                 <ul className="divide-y divide-slate-200 dark:divide-slate-700/50">
-                  {rows.map((row) => (
+                  {activeRows.map((row) => (
                     <li
-                      key={row.agentId}
+                      key={row.displayName}
                       className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-200"
                     >
                       <span className="truncate font-medium text-slate-950 dark:text-slate-50">
-                        {row.agentName}
+                        {row.displayName}
                       </span>
                       <span>{formatTokens(row.totalTokens)}</span>
                       <span>{formatCost(row.totalCost)}</span>

@@ -22,6 +22,7 @@ type UsageAgentSummary = {
 
 type UsagePeriod = {
   byAgent: UsageAgentSummary[];
+  byModel: UsageModelSummary[];
   label: string;
   sessionCount: number;
   totalCost: number;
@@ -33,8 +34,16 @@ export type UsageResponse = {
   updatedAt: number;
 };
 
+type UsageModelSummary = {
+  model: string;
+  sessionCount: number;
+  totalCost: number;
+  totalTokens: number;
+};
+
 type UsageSession = {
   agentId: string;
+  model: string;
   estimatedCostUsd: number;
   totalTokens: number;
   updatedAt: number;
@@ -176,6 +185,7 @@ function normalizeSession(value: unknown): UsageSession | null {
   const agentId = key ? getAgentIdFromSessionKey(key) : null;
   const totalTokens = getNumber(value.totalTokens) ?? 0;
   const estimatedCostUsd = getNumber(value.estimatedCostUsd) ?? 0;
+  const model = typeof value.model === "string" && value.model.trim() ? value.model.trim() : "unknown";
   const updatedAt = normalizeTimestamp(value.updatedAt);
 
   if (!agentId || updatedAt === null) {
@@ -185,6 +195,7 @@ function normalizeSession(value: unknown): UsageSession | null {
   return {
     agentId,
     estimatedCostUsd,
+    model,
     totalTokens,
     updatedAt,
   };
@@ -194,6 +205,7 @@ function buildUsageResponse(sessions: UsageSession[], now: number): UsageRespons
   const periods = PERIOD_WINDOWS.map(({ label, windowMs }) => {
     const cutoff = now - windowMs;
     const byAgent = new Map<string, UsageAgentSummary>();
+    const byModel = new Map<string, UsageModelSummary>();
 
     let totalTokens = 0;
     let totalCost = 0;
@@ -208,17 +220,29 @@ function buildUsageResponse(sessions: UsageSession[], now: number): UsageRespons
       totalTokens += session.totalTokens;
       totalCost += session.estimatedCostUsd;
 
-      const existing = byAgent.get(session.agentId) ?? {
+      const existingAgent = byAgent.get(session.agentId) ?? {
         agentId: session.agentId,
         sessionCount: 0,
         totalCost: 0,
         totalTokens: 0,
       };
 
-      existing.sessionCount += 1;
-      existing.totalTokens += session.totalTokens;
-      existing.totalCost += session.estimatedCostUsd;
-      byAgent.set(session.agentId, existing);
+      existingAgent.sessionCount += 1;
+      existingAgent.totalTokens += session.totalTokens;
+      existingAgent.totalCost += session.estimatedCostUsd;
+      byAgent.set(session.agentId, existingAgent);
+
+      const existingModel = byModel.get(session.model) ?? {
+        model: session.model,
+        sessionCount: 0,
+        totalCost: 0,
+        totalTokens: 0,
+      };
+
+      existingModel.sessionCount += 1;
+      existingModel.totalTokens += session.totalTokens;
+      existingModel.totalCost += session.estimatedCostUsd;
+      byModel.set(session.model, existingModel);
     }
 
     return {
@@ -228,6 +252,13 @@ function buildUsageResponse(sessions: UsageSession[], now: number): UsageRespons
         }
 
         return left.agentId.localeCompare(right.agentId);
+      }),
+      byModel: Array.from(byModel.values()).sort((left, right) => {
+        if (right.totalTokens !== left.totalTokens) {
+          return right.totalTokens - left.totalTokens;
+        }
+
+        return left.model.localeCompare(right.model);
       }),
       label,
       sessionCount,

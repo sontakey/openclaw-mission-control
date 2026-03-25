@@ -9,8 +9,16 @@ export type UsageAgentSummary = {
   totalTokens: number;
 };
 
+export type UsageModelSummary = {
+  model: string;
+  sessionCount: number;
+  totalCost: number;
+  totalTokens: number;
+};
+
 export type UsagePeriod = {
   byAgent: UsageAgentSummary[];
+  byModel: UsageModelSummary[];
   label: string;
   sessionCount: number;
   totalCost: number;
